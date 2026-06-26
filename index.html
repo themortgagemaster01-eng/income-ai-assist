@@ -340,6 +340,18 @@ header{animation:fade .6s var(--ease) both;}
 .ocr-raw-body{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#aeb6c2;white-space:pre-wrap;max-height:160px;overflow:auto;background:rgba(0,0,0,.35);padding:8px;border-radius:7px;margin:4px 0}
 .ocr-raw-body mark{background:rgba(201,168,106,.4);color:#fff;border-radius:3px;padding:0 2px}
 .ocr-raw-note{font-size:9.5px;color:#7a8493;padding-bottom:8px}
+.hdr-btns{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hdr-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:#cbd5e1;font-size:11px;font-weight:600;padding:7px 11px;border-radius:9px;cursor:pointer;font-family:inherit}
+.hdr-btn:hover{background:rgba(255,255,255,.1)}
+.hdr-btn.danger{border-color:rgba(252,165,165,.4);color:#fca5a5}
+.copy-btn{margin-top:10px}
+.iaa-toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:2147483646;background:rgba(16,20,28,.97);border:1px solid rgba(201,168,106,.35);color:#e8d6a8;font-size:13px;font-weight:600;padding:12px 18px;border-radius:12px;box-shadow:0 20px 60px -15px rgba(0,0,0,.8);opacity:0;transition:opacity .25s,transform .25s;max-width:90vw;text-align:center}
+.iaa-toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+.modal-scrim{position:fixed;inset:0;z-index:2147483600;background:rgba(4,6,11,.9);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:22px}
+.modal-card{max-width:460px;max-height:86vh;overflow:auto;background:linear-gradient(165deg,rgba(20,24,34,.98),rgba(9,12,19,.99));border:1px solid rgba(201,168,106,.3);border-radius:20px;padding:24px;box-shadow:0 50px 130px -20px rgba(0,0,0,.85)}
+.modal-card h3{font-size:17px;color:#e8d6a8;margin:0 0 12px}
+.modal-card p{font-size:12.5px;line-height:1.6;color:#aab2c0;margin:0 0 10px}
+.modal-x{width:100%;margin-top:14px;padding:12px;border:none;border-radius:12px;background:linear-gradient(145deg,#cdac6c,#f0deae);color:#15110a;font-size:14px;font-weight:700;cursor:pointer}
 </style>
 </head>
 <body>
@@ -354,7 +366,7 @@ header{animation:fade .6s var(--ease) both;}
         <div class="sub">See your income clearly</div>
       </div>
     </div>
-    <div class="chip"><i class="fa-solid fa-shield-halved" style="font-size:9px;margin-right:6px;"></i>Private &amp; on-device</div>
+    <div class="hdr-btns"><div class="chip"><i class="fa-solid fa-shield-halved" style="font-size:9px;margin-right:6px;"></i>Private &amp; on-device</div><button class="hdr-btn" onclick="showPrivacy()"><i class="fa-solid fa-lock"></i> Privacy</button><button class="hdr-btn danger" onclick="destroySession()"><i class="fa-solid fa-trash-can"></i> Clear</button></div>
   </div>
 </header>
 
@@ -729,6 +741,7 @@ function render(qi, share, sub, opts){
   if (opts.breakdown) html += '<div class="breakdown">'+opts.breakdown+'</div>';
   html += '<div class="insight">'+opts.insight+'</div>';
   if(opts.smart) html += insightPanel(opts.smart);
+  html += '<button class="btn-ghost copy-btn" onclick="copyCleanText()"><i class="fa-solid fa-copy"></i> Copy clean text</button>';
   html += DISCLAIMER_SHORT;
   html += '</div>';
   document.getElementById('analysis').innerHTML = html;
@@ -1389,7 +1402,7 @@ function calcDTI(){
     +wifHtml
     +'<div class="rf-wrap">'+flagHtml+'</div>'
     +'<div class="breakdown">'+bd+'</div>'
-    +insightPanel(dtiInsights(LAST_DTI))+'<button class="btn-ghost" onclick="exportPDF()"><i class="fa-solid fa-file-pdf"></i> Export a clean PDF summary</button>'+DISCLAIMER_SHORT
+    +insightPanel(dtiInsights(LAST_DTI))+'<button class="btn-ghost" onclick="exportPDF()"><i class="fa-solid fa-file-pdf"></i> Export a clean PDF summary</button>'+'<button class="btn-ghost copy-btn" onclick="copyCleanText()"><i class="fa-solid fa-copy"></i> Copy clean text</button>'+DISCLAIMER_SHORT
     +'</div>';
   document.getElementById('analysis').innerHTML=html;
   playResultAnims();
@@ -1476,7 +1489,7 @@ function exportPDF(){
    +'.wm{position:fixed;bottom:20px;right:20px;color:#ccc;font-size:11px;}'
    +'@media print{.noprint{display:none;}}</style></head><body>'
    +'<h1>Income AI Assist — Qualifying Summary</h1>'
-   +'<p class="muted">Prepared '+today+' · Robert A. Castro · Movement Mortgage · NMLS #66194 · 914-266-3806</p>'
+   +'<p class="muted">Prepared '+today+' · Personal estimate (self-prepared) · Not affiliated with any lender</p>'
    +'<h2>Qualifying Income</h2><p class="big">'+fmt(d.income)+' <span class="muted">/ month</span></p><p class="muted">Source: '+QUAL_SOURCE+'</p>'
    +'<h2>Monthly Obligations</h2><table>'+(d.pitia>0?'<tr><td>Proposed housing (PITIA)</td><td style="text-align:right">'+fmt(d.pitia)+'</td></tr>':'')+debtRows+'<tr><td><b>Total</b></td><td style="text-align:right"><b>'+fmt(d.pitia+d.monthlyDebts)+'</b></td></tr></table>'
    +'<h2>Debt-to-Income</h2><table>'+(d.frontDTI!=null?'<tr><td>Front-end (housing) DTI</td><td style="text-align:right">'+d.frontDTI.toFixed(1)+'%</td></tr>':'')+'<tr><td>Back-end (total) DTI</td><td style="text-align:right"><b>'+d.backDTI.toFixed(1)+'%</b></td></tr></table>'
@@ -1596,7 +1609,55 @@ function showDisclaimerGate(){
   b.onclick=function(){ o.remove(); };
   card.appendChild(b); o.appendChild(card); document.body.appendChild(o);
 }
-document.querySelectorAll('.yrn').forEach(e=>e.textContent=NOW.getFullYear());document.querySelectorAll('.y1').forEach(e=>e.textContent=YR_RECENT);document.querySelectorAll('.y2').forEach(e=>e.textContent=YR_PRIOR);setVarMethod('quick'); showDisclaimerGate();
+function iaaToast(msg){
+  let t=document.getElementById('iaa-toast');
+  if(!t){ t=document.createElement('div'); t.id='iaa-toast'; t.className='iaa-toast'; document.body.appendChild(t); }
+  t.textContent=msg; requestAnimationFrame(function(){ t.classList.add('show'); });
+  clearTimeout(t._h); t._h=setTimeout(function(){ t.classList.remove('show'); }, 2600);
+}
+function showPrivacy(){
+  const o=document.createElement('div'); o.className='modal-scrim';
+  const c=document.createElement('div'); c.className='modal-card';
+  c.innerHTML='<h3><i class="fa-solid fa-shield-halved"></i> How your data is handled</h3>'
+    +'<p>Income AI Assist runs <b>entirely on your device</b>. Anything you type, and any document or photo you scan, is read and calculated <b>locally in your browser</b> \u2014 it is <b>not uploaded</b> to any server, account, or database. There are no logins and no stored records.</p>'
+    +'<p>One network exception: the first time you scan an image, the app downloads the text-reader engine from a public code host. Your document itself is never sent \u2014 only the engine is fetched.</p>'
+    +'<p>Your entries live only in this browser tab. Closing the tab, tapping <b>Clear</b>, or 10 minutes of inactivity wipes them from the page. Like any website, your browser may keep its own temporary cache, so for highly sensitive documents we recommend clearing your browser data afterward and cropping out anything you do not need (such as a Social Security number) before scanning.</p>'
+    +'<p style="color:#7a8493">This tool provides estimates for informational and educational use only. It is not financial, tax, or lending advice, not a loan approval or pre-qualification, and not a commitment to lend.</p>';
+  const b=document.createElement('button'); b.className='modal-x'; b.textContent='Got it'; b.onclick=function(){ o.remove(); };
+  c.appendChild(b); o.appendChild(c); o.addEventListener('click',function(e){ if(e.target===o) o.remove(); }); document.body.appendChild(o);
+}
+function destroySession(){
+  ['w2-salary','w2-401k','w2-comm','w2-bonus','w2-ot','w2-ytd-months','w2-ot-ytd','w2-ot-y1','w2-ot-y2','w2-comm-ytd','w2-comm-y1','w2-comm-y2','w2-bonus-ytd','w2-bonus-y1','w2-bonus-y2','se-own','se-k1-dist','dti-pitia','dti-cards','dti-auto','dti-install','dti-sl-bal','dti-sl-actual','dti-support','dti-othermtg','dti-other','ocr-regular','ocr-ot','ocr-comm','ocr-bonus'].forEach(function(id){ const e=document.getElementById(id); if(e) e.value=''; });
+  const sep=document.getElementById('panel-se'); if(sep) sep.querySelectorAll('input[type=number]').forEach(function(e){ e.value=''; });
+  const tg=document.getElementById('w2-var-toggle'); if(tg){ tg.checked=false; if(typeof onVarToggle==='function') onVarToggle(); }
+  if(typeof setVarMethod==='function') setVarMethod('quick');
+  QUAL_MONTHLY=0; QUAL_SOURCE=''; LAST_DTI=null;
+  try{ for(const k in fileStore) delete fileStore[k]; }catch(e){}
+  const an=document.getElementById('analysis'); if(an) an.innerHTML='<div class="placeholder"><i class="fa-solid fa-chart-pie"></i>Session cleared. Enter income details and generate to view your Fannie&nbsp;Mae-aligned qualifying analysis.</div>';
+  if(typeof renderDocs==='function') renderDocs();
+  if(typeof refreshDtiNote==='function') refreshDtiNote();
+  if(typeof switchTab==='function') switchTab('w2');
+  iaaToast('Session cleared \u2014 entries wiped from this device.');
+}
+let _iaaIdle;
+function resetIdle(){ clearTimeout(_iaaIdle); _iaaIdle=setTimeout(function(){ destroySession(); iaaToast('Session auto-cleared after 10 minutes of inactivity.'); }, 600000); }
+['click','keydown','input','touchstart'].forEach(function(ev){ document.addEventListener(ev, resetIdle, {passive:true}); });
+function iaaFallbackCopy(txt){ const ta=document.createElement('textarea'); ta.value=txt; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); iaaToast('Clean estimate copied.'); }catch(e){ iaaToast('Copy not supported here \u2014 long-press to select.'); } ta.remove(); }
+function copyCleanText(){
+  const lines=[];
+  lines.push('Income AI Assist - Quick Estimate');
+  lines.push('---------------------------------');
+  if(QUAL_MONTHLY>0){ lines.push('Estimated Monthly Qualifying Income: '+fmt(QUAL_MONTHLY)+' / mo'); lines.push('Income basis: '+(QUAL_SOURCE||'-')); }
+  if(LAST_DTI){ if(LAST_DTI.backDTI!=null) lines.push('Back-end DTI: '+LAST_DTI.backDTI.toFixed(1)+'%'); if(LAST_DTI.frontDTI!=null) lines.push('Housing (front-end) DTI: '+LAST_DTI.frontDTI.toFixed(1)+'%'); }
+  lines.push('Calculation logic: Fannie Mae Form 1084 / Selling Guide B3-3.1 (24-mo basis)');
+  lines.push('Data footprint: nothing stored - on-device only');
+  lines.push('');
+  lines.push('Notice: Personal estimate for informational and educational use only. Not financial or lending advice, not a loan approval or pre-qualification, not a commitment to lend.');
+  const txt=lines.join('\n');
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(function(){ iaaToast('Clean estimate copied to clipboard.'); },function(){ iaaFallbackCopy(txt); }); }
+  else iaaFallbackCopy(txt);
+}
+document.querySelectorAll('.yrn').forEach(e=>e.textContent=NOW.getFullYear());document.querySelectorAll('.y1').forEach(e=>e.textContent=YR_RECENT);document.querySelectorAll('.y2').forEach(e=>e.textContent=YR_PRIOR);setVarMethod('quick'); showDisclaimerGate(); resetIdle();
 renderWorksheet(); switchTab('w2');
 </script>
 <script>
