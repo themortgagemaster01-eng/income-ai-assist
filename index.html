@@ -367,6 +367,9 @@ body.simple #analysis .breakdown,body.simple #analysis .insight,body.simple #ana
 .hh-held{grid-column:1/-1;display:none;align-items:center;gap:8px;font-size:11.5px;color:#cbd5e1;background:rgba(124,196,255,.08);border:1px solid rgba(124,196,255,.2);border-radius:8px;padding:8px 10px}
 .hh-held input{width:auto;margin:0}
 @media(max-width:520px){.hh-row{grid-template-columns:1fr 1fr}.hh-rm{grid-column:2;justify-self:end}}
+.mp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.tabs{flex-wrap:wrap}
+@media(max-width:560px){.mp-grid{grid-template-columns:1fr}.tab{font-size:12px;padding:9px 11px}}
 </style>
 </head>
 <body>
@@ -405,6 +408,7 @@ body.simple #analysis .breakdown,body.simple #analysis .insight,body.simple #ana
     <div id="tab-se" class="tab" onclick="switchTab('se')"><i class="fa-solid fa-briefcase"></i>Self-Employed</div>
     <div id="tab-dti" class="tab" onclick="switchTab('dti')"><i class="fa-solid fa-scale-balanced"></i>DTI &amp; Liabilities</div>
     <div id="tab-household" class="tab" onclick="switchTab('household')"><i class="fa-solid fa-people-roof"></i>Household</div>
+    <div id="tab-maxprice" class="tab" onclick="switchTab('maxprice')"><i class="fa-solid fa-house-circle-check"></i>Max Price</div>
   </div>
 
   <!-- single framed unit, hairline seam between input + analysis -->
@@ -536,6 +540,23 @@ body.simple #analysis .breakdown,body.simple #analysis .insight,body.simple #ana
           <div id="hh-rows"></div>
           <button class="hdr-btn" style="margin-top:4px" onclick="addSource()"><i class="fa-solid fa-plus"></i> Add income source</button>
           <button class="btn-gold" style="margin-top:14px" onclick="runAnalysis(calcHousehold)"><i class="fa-solid fa-arrow-right-long"></i> Calculate Household Income</button>
+        </div>
+        <div id="panel-maxprice" class="hidden">
+          <div class="kicker">Buying Power · Estimate</div>
+          <h2 class="section-title">Maximum Purchase Price</h2>
+          <p class="subnote">Estimates the home price your income could support \u2014 your qualifying income and monthly debts against a target debt-to-income ratio. Rate, taxes, and insurance are assumptions you set. This is an estimate, not a pre-approval.</p>
+          <div id="mp-income-note" class="subnote"></div>
+          <div class="mp-grid">
+            <div><label>Existing monthly debts ($)</label><input id="mp-debts" type="number" placeholder="$0"/></div>
+            <div><label>Target back-end DTI (%)</label><input id="mp-dti" type="number" placeholder="43"/></div>
+            <div><label>Interest rate (%)</label><input id="mp-rate" type="number" placeholder="e.g. 7.0"/></div>
+            <div><label>Loan term (years)</label><select id="mp-term"><option value="30">30</option><option value="20">20</option><option value="15">15</option></select></div>
+            <div><label>Down payment (%)</label><input id="mp-down" type="number" placeholder="20"/></div>
+            <div><label>Property tax rate (%/yr)</label><input id="mp-tax" type="number" placeholder="1.1"/></div>
+            <div><label>Home insurance ($/yr)</label><input id="mp-ins" type="number" placeholder="1500"/></div>
+            <div><label>HOA ($/mo)</label><input id="mp-hoa" type="number" placeholder="0"/></div>
+          </div>
+          <button class="btn-gold" style="margin-top:14px" onclick="runAnalysis(calcMaxPrice)"><i class="fa-solid fa-arrow-right-long"></i> Estimate Max Price</button>
         </div>
       </div>
 
@@ -1526,13 +1547,14 @@ function exportPDF(){
 }
 
 function switchTab(t){ currentType=t;
-  ['w2','se','dti','household'].forEach(k=>{
+  ['w2','se','dti','household','maxprice'].forEach(k=>{
     document.getElementById('tab-'+k).className='tab'+(t===k?' tab-active':'');
     const pn=document.getElementById('panel-'+k); if(pn) pn.classList.toggle('hidden', t!==k);
   });
   document.getElementById('analysis').innerHTML='<div class="placeholder"><i class="fa-solid fa-chart-pie"></i>'+(t==='dti'?'Enter monthly obligations and analyze to see DTI ratios, risk flags, and a decision-confidence reading.':'Enter income details and calculate to see your Fannie Mae-aligned qualifying analysis.')+'</div>';
   if(t==='se') renderWorksheet();
   if(t==='household' && !document.querySelector('#panel-household .hh-row')) addSource();
+  if(t==='maxprice') refreshMaxNote();
   if(t==='dti'){ refreshDtiNote(); markStep('liab'); }
   renderDocs();
 }
@@ -1772,6 +1794,62 @@ function calcHousehold(){
   if(typeof playResultAnims==='function') playResultAnims();
   refreshDtiNote(); markStep('income');
 }
+function refreshMaxNote(){
+  const el=document.getElementById('mp-income-note'); if(!el) return;
+  el.innerHTML = QUAL_MONTHLY>0 ? '<b style="color:var(--gold-tx)">Using '+fmt(QUAL_MONTHLY)+'/mo</b> qualifying income from '+QUAL_SOURCE+'.' : '<b style="color:#fca5a5">No income yet</b> \u2014 run the W-2, Self-Employed, or Household tab first so this has a starting point.';
+  const d=document.getElementById('mp-debts'); if(d && !d.value && LAST_DTI && LAST_DTI.monthlyDebts>0) d.value=Math.round(LAST_DTI.monthlyDebts);
+}
+function calcMaxPrice(){
+  const income=QUAL_MONTHLY;
+  if(income<=0){ document.getElementById('analysis').innerHTML='<div class="placeholder"><i class="fa-solid fa-circle-exclamation"></i>No qualifying income yet. Calculate income on the W-2, Self-Employed, or Household tab first.</div>'; return; }
+  const debts=val('mp-debts');
+  let dti=val('mp-dti')||43; dti=Math.max(20,Math.min(50,dti));
+  let rate=val('mp-rate'); if(rate<=0) rate=7;
+  const term=parseInt((document.getElementById('mp-term')||{}).value)||30;
+  let down=val('mp-down'); if(down<0)down=0; if(down>95)down=95; const downF=down/100;
+  let taxR=val('mp-tax'); if(taxR<=0)taxR=1.1; taxR=taxR/100;
+  const insYr=val('mp-ins')||1500;
+  const hoa=val('mp-hoa');
+  const pitiaMax=Math.max(0, income*(dti/100) - debts);
+  const r=rate/100/12, n=term*12;
+  const factor = r>0 ? (r*Math.pow(1+r,n))/(Math.pow(1+r,n)-1) : 1/n;
+  const pmiRate = downF<0.20 ? 0.006 : 0;
+  const insMo=insYr/12;
+  const bracket=(1-downF)*factor + taxR/12 + (1-downF)*pmiRate/12;
+  let homePrice = bracket>0 ? (pitiaMax - insMo - hoa)/bracket : 0; if(homePrice<0) homePrice=0;
+  const loan=homePrice*(1-downF), pi=loan*factor, taxMo=homePrice*taxR/12, pmiMo=loan*pmiRate/12, downAmt=homePrice*downF;
+  const pitia=pi+taxMo+insMo+hoa+pmiMo;
+  const bd='<div class="br"><span>Estimated max home price</span><span>'+fmt(homePrice)+'</span></div>'
+    +'<div class="br"><span>Down payment ('+Math.round(down)+'%)</span><span>'+fmt(downAmt)+'</span></div>'
+    +'<div class="br"><span>Loan amount</span><span>'+fmt(loan)+'</span></div>'
+    +'<div class="br"><span>Principal &amp; interest ('+rate.toFixed(2)+'%, '+term+'yr)</span><span>'+fmt(pi)+'/mo</span></div>'
+    +'<div class="br"><span>Property taxes</span><span>'+fmt(taxMo)+'/mo</span></div>'
+    +'<div class="br"><span>Home insurance</span><span>'+fmt(insMo)+'/mo</span></div>'
+    +(pmiMo>0?'<div class="br"><span>Est. mortgage insurance (PMI)</span><span>'+fmt(pmiMo)+'/mo</span></div>':'')
+    +(hoa>0?'<div class="br"><span>HOA</span><span>'+fmt(hoa)+'/mo</span></div>':'')
+    +'<div class="br total"><span>Total housing payment (PITIA)</span><span>'+fmt(pitia)+'/mo</span></div>';
+  const items=[];
+  items.push({tone:'info',msg:'Based on a <b>'+Math.round(dti)+'%</b> target DTI, a <b>'+rate.toFixed(2)+'%</b> rate, <b>'+Math.round(down)+'%</b> down, and your '+fmt(income)+'/mo income with '+fmt(debts)+'/mo of other debts.'});
+  if(pmiMo>0) items.push({tone:'warn',msg:'Down payment is under 20%, so this includes an estimated <b>PMI</b> charge. Putting 20% down removes it and raises your max price.'});
+  if(debts>0) items.push({tone:'info',msg:'Paying down the '+fmt(debts)+'/mo in other debts would shift that budget straight into buying power.'});
+  items.push({tone:'info',msg:'Rate, taxes, and insurance are assumptions \u2014 adjust them to match a real quote. This is an estimate, not a pre-approval.'});
+  const ins='<span class="it">Actionable AI Insight:</span> Your buying power is the housing payment your income can support after other debts (target '+Math.round(dti)+'% DTI), converted to a home price at the rate, taxes, insurance, and down payment you entered.';
+  const html='<div class="load-stagger">'
+    +'<div class="result-hero"><div class="rh-lbl">Estimated Maximum Home Price</div>'
+    +'<div class="rh-fig qi-value" data-count="'+Math.abs(homePrice)+'" data-neg="0">'+fmt(homePrice)+'</div>'
+    +'<div class="rh-sub">'+fmt(pitia)+'/mo housing payment · '+fmt(downAmt)+' down</div></div>'
+    +'<div class="simple-line simple-only">In plain terms, you could likely shop for homes up to about <b>'+fmt(homePrice)+'</b>, with a payment near <b>'+fmt(pitia)+'/mo</b>.</div>'
+    +'<div class="breakdown">'+bd+'</div>'
+    +'<div class="insight">'+ins+'</div>'
+    +insightPanel(items)
+    +'<button class="btn-ghost copy-btn" onclick="copyCleanText()"><i class="fa-solid fa-copy"></i> Copy clean text</button>'
+    +DISCLAIMER_SHORT+'</div>';
+  document.getElementById('analysis').innerHTML=html;
+  if(typeof playResultAnims==='function') playResultAnims();
+  MAXPRICE_LAST={homePrice:homePrice,pitia:pitia,down:downAmt};
+  markStep('findings');
+}
+let MAXPRICE_LAST=null;
 document.querySelectorAll('.yrn').forEach(e=>e.textContent=NOW.getFullYear());document.querySelectorAll('.y1').forEach(e=>e.textContent=YR_RECENT);document.querySelectorAll('.y2').forEach(e=>e.textContent=YR_PRIOR);setVarMethod('quick'); setViewMode('simple'); showDisclaimerGate(); resetIdle();
 renderWorksheet(); switchTab('w2');
 </script>
