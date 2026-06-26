@@ -1,7 +1,8 @@
 /* Income AI Assist - service worker
-   Caches the app shell so it installs and opens offline.
+   Network-first for the app HTML so updates appear immediately when online;
+   cache-first for static assets; full offline fallback.
    OCR (Tesseract) still needs a connection the first time to fetch its engine. */
-const CACHE = 'income-ai-assist-v1';
+const CACHE = 'income-ai-assist-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -26,8 +27,20 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   const req = e.request;
-  // Only handle same-origin GETs from cache; let CDN/OCR requests go straight to network.
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  const url = new URL(req.url);
+  const isDoc = req.mode === 'navigate' || req.destination === 'document'
+    || url.pathname.endsWith('/') || url.pathname.endsWith('/index.html');
+  if (isDoc) {
+    e.respondWith(
+      fetch(req).then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put('./index.html', copy)).catch(() => {});
+        return res;
+      }).catch(() => caches.match(req).then((r) => r || caches.match('./index.html')))
+    );
+    return;
+  }
   e.respondWith(
     caches.match(req).then((cached) => cached || fetch(req).then((res) => {
       const copy = res.clone();
