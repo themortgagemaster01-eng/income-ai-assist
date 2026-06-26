@@ -370,6 +370,14 @@ body.simple #analysis .breakdown,body.simple #analysis .insight,body.simple #ana
 .mp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .tabs{flex-wrap:wrap}
 @media(max-width:560px){.mp-grid{grid-template-columns:1fr}.tab{font-size:12px;padding:9px 11px}}
+#iaa-wk .modal-card{text-align:center}
+.wk-ic{font-size:30px;color:#e8d6a8;margin-bottom:8px}
+.wk-body{font-size:13px;line-height:1.65;color:#aab2c0;margin:0 0 16px;text-align:left}
+.wk-dots{display:flex;gap:6px;justify-content:center;margin-bottom:14px}
+.wk-dots span{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18)}
+.wk-dots span.on{background:#cdac6c}
+.wk-nav{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.wk-nav .modal-x{flex:none}
 </style>
 </head>
 <body>
@@ -384,7 +392,7 @@ body.simple #analysis .breakdown,body.simple #analysis .insight,body.simple #ana
         <div class="sub">See your income clearly</div>
       </div>
     </div>
-    <div class="hdr-btns"><div class="chip"><i class="fa-solid fa-shield-halved" style="font-size:9px;margin-right:6px;"></i>Private &amp; on-device</div><div class="viewseg"><button id="vs-simple" class="on" onclick="setViewMode('simple')">Simple</button><button id="vs-pro" onclick="setViewMode('pro')">Pro</button></div><button class="hdr-btn" onclick="showPrivacy()"><i class="fa-solid fa-lock"></i> Privacy</button><button class="hdr-btn danger" onclick="destroySession()"><i class="fa-solid fa-trash-can"></i> Clear</button></div>
+    <div class="hdr-btns"><div class="chip"><i class="fa-solid fa-shield-halved" style="font-size:9px;margin-right:6px;"></i>Private &amp; on-device</div><div class="viewseg"><button id="vs-simple" class="on" onclick="setViewMode('simple')">Simple</button><button id="vs-pro" onclick="setViewMode('pro')">Pro</button></div><button class="hdr-btn" onclick="showWalkthrough(true)"><i class="fa-solid fa-circle-question"></i> Guide</button><button class="hdr-btn" onclick="showPrivacy()"><i class="fa-solid fa-lock"></i> Privacy</button><button class="hdr-btn danger" onclick="destroySession()"><i class="fa-solid fa-trash-can"></i> Clear</button></div>
   </div>
 </header>
 
@@ -1850,7 +1858,32 @@ function calcMaxPrice(){
   markStep('findings');
 }
 let MAXPRICE_LAST=null;
-document.querySelectorAll('.yrn').forEach(e=>e.textContent=NOW.getFullYear());document.querySelectorAll('.y1').forEach(e=>e.textContent=YR_RECENT);document.querySelectorAll('.y2').forEach(e=>e.textContent=YR_PRIOR);setVarMethod('quick'); setViewMode('simple'); showDisclaimerGate(); resetIdle();
+const IAA_SLIDES=[
+  {icon:'<i class="fa-solid fa-feather-pointed"></i>',title:'Welcome to Income AI Assist',body:'See what your income looks like for a mortgage. It runs the same Fannie Mae income and debt-to-income math lenders use — instantly, and privately on your device.<br><br>Built for <b>loan officers</b>, <b>realtors</b>, and <b>buyers</b> who want a fast, honest read on qualifying numbers.'},
+  {icon:'<i class="fa-solid fa-layer-group"></i>',title:'Five quick tools',body:'<b>W-2 Wages</b> — salary plus averaged overtime, bonus, and commission.<br><b>Self-Employed</b> — Fannie Mae Form 1084 cash-flow.<br><b>DTI &amp; Liabilities</b> — debt ratios and risk flags.<br><b>Household</b> — co-borrowers and multiple jobs.<br><b>Max Price</b> — how much home the income supports.'},
+  {icon:'<i class="fa-solid fa-wand-magic-sparkles"></i>',title:'Scan and simplify',body:'Snap a photo of a paystub or W-2 and the on-device reader pulls the numbers for you. Switch between <b>Simple</b> (plain language for clients) and <b>Pro</b> (line-by-line for loan officers), and get plain-English insights on every result.'},
+  {icon:'<i class="fa-solid fa-shield-halved"></i>',title:'Private by design',body:'Everything stays on your device — no accounts, no uploads, no database. Tap <b>Clear</b> any time, or it auto-clears after 10 minutes, to wipe your entries.'},
+  {icon:'<i class="fa-solid fa-circle-info"></i>',title:'Estimates only',body:'This is an informational, educational estimate tool. It is <b>not</b> a lender, <b>not</b> financial or lending advice, and <b>not</b> a loan approval or pre-qualification. Always confirm with a licensed mortgage professional.'}
+];
+let _wkIdx=0;
+function showWalkthrough(force){
+  if(!force){ try{ if(localStorage.getItem('iaa_intro_v1')) return; }catch(e){} }
+  _wkIdx=0;
+  const o=document.createElement('div'); o.className='modal-scrim'; o.id='iaa-wk';
+  const c=document.createElement('div'); c.className='modal-card';
+  o.appendChild(c); document.body.appendChild(o);
+  function dots(){ return '<div class="wk-dots">'+IAA_SLIDES.map(function(_x,k){return '<span class="'+(k===_wkIdx?'on':'')+'"></span>';}).join('')+'</div>'; }
+  function draw(){
+    const sl=IAA_SLIDES[_wkIdx]; const last=_wkIdx===IAA_SLIDES.length-1;
+    c.innerHTML='<div class="wk-ic">'+sl.icon+'</div><h3>'+sl.title+'</h3><div class="wk-body">'+sl.body+'</div>'+dots()
+      +'<div class="wk-nav">'+(_wkIdx>0?'<button class="hdr-btn" id="wk-back">Back</button>':'<span></span>')
+      +'<button class="modal-x" style="width:auto;margin:0;padding:11px 22px" id="wk-next">'+(last?'Get started':'Next')+'</button></div>';
+    const bk=document.getElementById('wk-back'); if(bk) bk.onclick=function(){ if(_wkIdx>0){_wkIdx--; draw();} };
+    document.getElementById('wk-next').onclick=function(){ if(last){ try{localStorage.setItem('iaa_intro_v1','1');}catch(e){} o.remove(); } else { _wkIdx++; draw(); } };
+  }
+  draw();
+}
+document.querySelectorAll('.yrn').forEach(e=>e.textContent=NOW.getFullYear());document.querySelectorAll('.y1').forEach(e=>e.textContent=YR_RECENT);document.querySelectorAll('.y2').forEach(e=>e.textContent=YR_PRIOR);setVarMethod('quick'); setViewMode('simple'); showWalkthrough(); resetIdle();
 renderWorksheet(); switchTab('w2');
 </script>
 <script>
