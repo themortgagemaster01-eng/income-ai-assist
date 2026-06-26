@@ -361,6 +361,12 @@ body.simple #analysis .breakdown,body.simple #analysis .insight,body.simple #ana
 .simple-line{font-size:13.5px;line-height:1.55;color:#dfe5ef;background:rgba(201,168,106,.08);border:1px solid rgba(201,168,106,.2);border-radius:11px;padding:13px 15px;margin-top:14px}
 .scan-diag{display:block;margin:8px 0;padding:9px 11px;background:rgba(124,196,255,.08);border-left:3px solid #7cc4ff;border-radius:8px;color:#cfe1f5;font-size:12px;line-height:1.5}
 .redact{background:#15110a;color:#15110a;border:1px solid rgba(201,168,106,.3);border-radius:3px;padding:0 5px;font-size:10px;letter-spacing:1px;user-select:none}
+.hh-row{display:grid;grid-template-columns:1.05fr 1.5fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px}
+.hh-row select,.hh-row input{margin:0}
+.hh-rm{background:rgba(252,165,165,.12);border:1px solid rgba(252,165,165,.3);color:#fca5a5;width:34px;height:34px;border-radius:8px;cursor:pointer;font-size:16px;line-height:1}
+.hh-held{grid-column:1/-1;display:none;align-items:center;gap:8px;font-size:11.5px;color:#cbd5e1;background:rgba(124,196,255,.08);border:1px solid rgba(124,196,255,.2);border-radius:8px;padding:8px 10px}
+.hh-held input{width:auto;margin:0}
+@media(max-width:520px){.hh-row{grid-template-columns:1fr 1fr}.hh-rm{grid-column:2;justify-self:end}}
 </style>
 </head>
 <body>
@@ -398,6 +404,7 @@ body.simple #analysis .breakdown,body.simple #analysis .insight,body.simple #ana
     <div id="tab-w2" class="tab tab-active" onclick="switchTab('w2')"><i class="fa-solid fa-id-badge"></i>W-2 Wages</div>
     <div id="tab-se" class="tab" onclick="switchTab('se')"><i class="fa-solid fa-briefcase"></i>Self-Employed</div>
     <div id="tab-dti" class="tab" onclick="switchTab('dti')"><i class="fa-solid fa-scale-balanced"></i>DTI &amp; Liabilities</div>
+    <div id="tab-household" class="tab" onclick="switchTab('household')"><i class="fa-solid fa-people-roof"></i>Household</div>
   </div>
 
   <!-- single framed unit, hairline seam between input + analysis -->
@@ -522,6 +529,14 @@ body.simple #analysis .breakdown,body.simple #analysis .insight,body.simple #ana
           </div>
 
           <button class="btn-gold" onclick="runAnalysis(calcDTI)"><i class="fa-solid fa-arrow-right-long"></i> Analyze DTI &amp; Findings</button>
+        </div>
+        <div id="panel-household" class="hidden">
+          <div class="kicker">Household · Co-borrowers &amp; multiple jobs</div>
+          <h2 class="section-title">Combined Qualifying Income</h2>
+          <p class="subnote">Add every income source for all borrowers on the loan \u2014 a spouse/co-borrower, a second job, or someone who is both W-2 and self-employed. The app sums the qualifying amounts and feeds the total into DTI. Co-borrowers must be on the loan and credit-qualify; second/part-time jobs need a documented history (notes appear after you calculate).</p>
+          <div id="hh-rows"></div>
+          <button class="hdr-btn" style="margin-top:4px" onclick="addSource()"><i class="fa-solid fa-plus"></i> Add income source</button>
+          <button class="btn-gold" style="margin-top:14px" onclick="runAnalysis(calcHousehold)"><i class="fa-solid fa-arrow-right-long"></i> Calculate Household Income</button>
         </div>
       </div>
 
@@ -1512,12 +1527,13 @@ function exportPDF(){
 }
 
 function switchTab(t){ currentType=t;
-  ['w2','se','dti'].forEach(k=>{
+  ['w2','se','dti','household'].forEach(k=>{
     document.getElementById('tab-'+k).className='tab'+(t===k?' tab-active':'');
     const pn=document.getElementById('panel-'+k); if(pn) pn.classList.toggle('hidden', t!==k);
   });
   document.getElementById('analysis').innerHTML='<div class="placeholder"><i class="fa-solid fa-chart-pie"></i>'+(t==='dti'?'Enter monthly obligations and analyze to see DTI ratios, risk flags, and a decision-confidence reading.':'Enter income details and calculate to see your Fannie Mae-aligned qualifying analysis.')+'</div>';
   if(t==='se') renderWorksheet();
+  if(t==='household' && !document.querySelector('#panel-household .hh-row')) addSource();
   if(t==='dti'){ refreshDtiNote(); markStep('liab'); }
   renderDocs();
 }
@@ -1693,6 +1709,69 @@ function redactPII(h){
     .replace(/\b\d{9}\b/g,'<span class="redact">SSN</span>')
     .replace(/\(?\d{3}\)?[\s.\-]\d{3}[\s.\-]\d{4}/g,'<span class="redact">phone</span>')
     .replace(/\b[\w.\-]+@[\w.\-]+\.[A-Za-z]{2,}\b/g,'<span class="redact">email</span>');
+}
+const HH_TYPES=[['salary','W-2 salary (annual $)','annual'],['variable','W-2 variable (24-mo total $)','v24'],['second','Second job — W-2 (annual $)','annual'],['se','Self-employed (monthly qualifying $)','monthly'],['other','Other monthly income ($)','monthly']];
+let _hhSeq=0;
+function hhRowHtml(i){
+  const opts=HH_TYPES.map(function(t){return '<option value="'+t[0]+'">'+t[1]+'</option>';}).join('');
+  return '<div class="hh-row" data-i="'+i+'">'
+    +'<select class="hh-who"><option value="Borrower">Borrower</option><option value="Co-borrower">Co-borrower</option></select>'
+    +'<select class="hh-type" onchange="hhTypeChange(this)">'+opts+'</select>'
+    +'<input class="hh-amt" type="number" placeholder="$ annual"/>'
+    +'<button class="hh-rm" title="Remove" onclick="removeSource(this)">&times;</button>'
+    +'<label class="hh-held"><input type="checkbox" class="hh-held-cb"/> This second job has been held <b>12+ months</b> with documentation</label>'
+    +'</div>';
+}
+function addSource(){ const w=document.getElementById('hh-rows'); if(!w) return; const d=document.createElement('div'); d.innerHTML=hhRowHtml(_hhSeq++); w.appendChild(d.firstElementChild); }
+function removeSource(btn){ const r=btn.closest('.hh-row'); if(r) r.remove(); }
+function hhTypeChange(sel){
+  const row=sel.closest('.hh-row'); const t=sel.value;
+  row.querySelector('.hh-held').style.display=(t==='second')?'flex':'none';
+  const meta=HH_TYPES.find(function(x){return x[0]===t;});
+  row.querySelector('.hh-amt').placeholder = meta[2]==='annual'?'$ annual':meta[2]==='v24'?'$ 24-mo total':'$ monthly';
+}
+function calcHousehold(){
+  const rows=[].slice.call(document.querySelectorAll('#panel-household .hh-row'));
+  let total=0, coTotal=0; const parts=[]; let excludedSecond=false, hasCo=false, hasSE=false;
+  rows.forEach(function(r){
+    const who=r.querySelector('.hh-who').value;
+    const t=r.querySelector('.hh-type').value;
+    const raw=parseFloat((r.querySelector('.hh-amt').value||'').replace(/[$,\s]/g,''))||0;
+    if(raw<=0) return;
+    let mo=0,label='';
+    if(t==='salary'){ mo=raw/12; label='W-2 salary'; }
+    else if(t==='variable'){ mo=raw/24; label='W-2 variable (24-mo avg)'; }
+    else if(t==='se'){ mo=raw; label='Self-employed'; hasSE=true; }
+    else if(t==='other'){ mo=raw; label='Other income'; }
+    else if(t==='second'){
+      if(!r.querySelector('.hh-held-cb').checked){ excludedSecond=true; parts.push({who:who,label:'Second job (annual)',mo:0,excluded:true}); return; }
+      mo=raw/12; label='Second job';
+    }
+    if(who==='Co-borrower'){ hasCo=true; coTotal+=mo; }
+    total+=mo; parts.push({who:who,label:label,mo:mo});
+  });
+  QUAL_MONTHLY=total; QUAL_SOURCE='Household'+(hasCo?' (2 borrowers)':'');
+  let bd=parts.map(function(pp){ return '<div class="br"><span>'+pp.who+' · '+pp.label+(pp.excluded?' <em style="color:#fca5a5;font-style:normal">(excluded)</em>':'')+'</span><span>'+(pp.excluded?'$0':fmt(pp.mo))+'</span></div>'; }).join('')
+    +'<div class="br total"><span>Total household qualifying</span><span>'+fmt(total)+'</span></div>';
+  const items=[];
+  if(excludedSecond) items.push({tone:'bad',msg:'A second job was <b>excluded</b> because the 12-month box was not checked. Income from a second or part-time job only counts with a documented history \u2014 lenders generally want <b>2 years</b> (sometimes 12\u201324 months with strong documentation).'});
+  if(hasCo) items.push({tone:'info',msg:'Co-borrower income is included \u2014 it only counts if the co-borrower is on the loan application and credit-qualifies with you.'});
+  if(hasSE) items.push({tone:'info',msg:'Self-employed amounts should be the monthly qualifying figure (2-year Form 1084 average). Use the Self-Employed tab to compute it if needed.'});
+  if(total>0) items.push({tone:'good',msg:'This combined total now feeds the <b>DTI</b> tab as your household qualifying income.'});
+  const ins='<span class="it">Actionable AI Insight:</span> Household qualifying income is the sum of each documented source across all borrowers on the loan. Variable and self-employed income use their averaged figures; a second job needs a documented multi-month history to count.';
+  const html='<div class="load-stagger">'
+    +'<div class="result-hero"><div class="rh-lbl">Combined Household Qualifying Income</div>'
+    +'<div class="rh-fig qi-value" data-count="'+Math.abs(total)+'" data-neg="0">'+fmt(total)+'</div>'
+    +'<div class="rh-sub">'+QUAL_SOURCE+' · feeds the DTI tab</div></div>'
+    +'<div class="simple-line simple-only">In plain terms, your household can count about <b>'+fmt(total)+'/mo</b> of income toward the mortgage.</div>'
+    +'<div class="breakdown">'+bd+'</div>'
+    +'<div class="insight">'+ins+'</div>'
+    +insightPanel(items)
+    +'<button class="btn-ghost copy-btn" onclick="copyCleanText()"><i class="fa-solid fa-copy"></i> Copy clean text</button>'
+    +DISCLAIMER_SHORT+'</div>';
+  document.getElementById('analysis').innerHTML=html;
+  if(typeof playResultAnims==='function') playResultAnims();
+  refreshDtiNote(); markStep('income');
 }
 document.querySelectorAll('.yrn').forEach(e=>e.textContent=NOW.getFullYear());document.querySelectorAll('.y1').forEach(e=>e.textContent=YR_RECENT);document.querySelectorAll('.y2').forEach(e=>e.textContent=YR_PRIOR);setVarMethod('quick'); setViewMode('simple'); showDisclaimerGate(); resetIdle();
 renderWorksheet(); switchTab('w2');
