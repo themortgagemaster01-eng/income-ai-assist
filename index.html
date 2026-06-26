@@ -360,6 +360,7 @@ body.simple .simple-only{display:block}
 body.simple #analysis .breakdown,body.simple #analysis .insight,body.simple #analysis .metrics{display:none!important}
 .simple-line{font-size:13.5px;line-height:1.55;color:#dfe5ef;background:rgba(201,168,106,.08);border:1px solid rgba(201,168,106,.2);border-radius:11px;padding:13px 15px;margin-top:14px}
 .scan-diag{display:block;margin:8px 0;padding:9px 11px;background:rgba(124,196,255,.08);border-left:3px solid #7cc4ff;border-radius:8px;color:#cfe1f5;font-size:12px;line-height:1.5}
+.redact{background:#15110a;color:#15110a;border:1px solid rgba(201,168,106,.3);border-radius:3px;padding:0 5px;font-size:10px;letter-spacing:1px;user-select:none}
 </style>
 </head>
 <body>
@@ -1596,13 +1597,14 @@ function dtiInsights(d){
 function highlightRaw(t,f){
   if(!t) return '<span style="color:#7a8493">No raw text was captured.</span>';
   let h=String(t).replace(/[&<>]/g,function(c){return c==='&'?'&amp;':c==='<'?'&lt;':'&gt;';});
+  h=redactPII(h);
   const nums=[f.otCurrent,f.commCurrent,f.bonusCurrent,f.grossCurrent,f.grossYTD,f.baseRate].filter(function(v){return v!=null;});
   const seen={};
   nums.forEach(function(n){ n=Math.round(n); if(!n) return; [String(n), n.toLocaleString('en-US')].forEach(function(pp){ if(pp&&!seen[pp]&&h.indexOf(pp)>=0){ seen[pp]=1; h=h.split(pp).join('\u0001'+pp+'\u0002'); } }); });
   return h.split('\u0001').join('<mark>').split('\u0002').join('</mark>');
 }
 function rawPanel(t,f){
-  return '<details class="ocr-raw"><summary><i class="fa-solid fa-eye"></i> What the on-device reader saw</summary><div class="ocr-raw-body">'+highlightRaw(t,f)+'</div><div class="ocr-raw-note">Processed 100% on your device (Tesseract). This text never leaves your phone. Highlights mark the figures the app pulled out.</div></details>';
+  return '<details class="ocr-raw"><summary><i class="fa-solid fa-eye"></i> What the on-device reader saw</summary><div class="ocr-raw-body">'+highlightRaw(t,f)+'</div><div class="ocr-raw-note">Processed 100% on your device (Tesseract). This text never leaves your phone. Sensitive info (SSNs, phone numbers, emails) is auto-masked; gold highlights mark the figures the app pulled out.</div></details>';
 }
 function showDisclaimerGate(){
   if(window.__disc) return; window.__disc=1;
@@ -1684,6 +1686,13 @@ function scanDiagnostic(f){
   if(found.length) s+='\u2713 I read your <b>'+found.join('</b>, <b>')+'</b> from this stub. ';
   if(miss.length) s+='I did not find a clear <b>'+miss.join('</b>, <b>')+'</b> figure \u2014 if your stub shows '+(miss.length>1?'them':'it')+', just add '+(miss.length>1?'them':'it')+' below.';
   return s+'</span>';
+}
+function redactPII(h){
+  return String(h)
+    .replace(/\b\d{3}-\d{2}-\d{4}\b/g,'<span class="redact">SSN</span>')
+    .replace(/\b\d{9}\b/g,'<span class="redact">SSN</span>')
+    .replace(/\(?\d{3}\)?[\s.\-]\d{3}[\s.\-]\d{4}/g,'<span class="redact">phone</span>')
+    .replace(/\b[\w.\-]+@[\w.\-]+\.[A-Za-z]{2,}\b/g,'<span class="redact">email</span>');
 }
 document.querySelectorAll('.yrn').forEach(e=>e.textContent=NOW.getFullYear());document.querySelectorAll('.y1').forEach(e=>e.textContent=YR_RECENT);document.querySelectorAll('.y2').forEach(e=>e.textContent=YR_PRIOR);setVarMethod('quick'); setViewMode('simple'); showDisclaimerGate(); resetIdle();
 renderWorksheet(); switchTab('w2');
