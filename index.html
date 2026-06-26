@@ -352,6 +352,14 @@ header{animation:fade .6s var(--ease) both;}
 .modal-card h3{font-size:17px;color:#e8d6a8;margin:0 0 12px}
 .modal-card p{font-size:12.5px;line-height:1.6;color:#aab2c0;margin:0 0 10px}
 .modal-x{width:100%;margin-top:14px;padding:12px;border:none;border-radius:12px;background:linear-gradient(145deg,#cdac6c,#f0deae);color:#15110a;font-size:14px;font-weight:700;cursor:pointer}
+.viewseg{display:inline-flex;border:1px solid rgba(255,255,255,.14);border-radius:9px;overflow:hidden}
+.viewseg button{background:transparent;border:none;color:#9aa3b2;font-size:11px;font-weight:600;padding:7px 12px;cursor:pointer;font-family:inherit}
+.viewseg button.on{background:rgba(201,168,106,.2);color:#e8d6a8}
+.simple-only{display:none}
+body.simple .simple-only{display:block}
+body.simple #analysis .breakdown,body.simple #analysis .insight,body.simple #analysis .metrics{display:none!important}
+.simple-line{font-size:13.5px;line-height:1.55;color:#dfe5ef;background:rgba(201,168,106,.08);border:1px solid rgba(201,168,106,.2);border-radius:11px;padding:13px 15px;margin-top:14px}
+.scan-diag{display:block;margin:8px 0;padding:9px 11px;background:rgba(124,196,255,.08);border-left:3px solid #7cc4ff;border-radius:8px;color:#cfe1f5;font-size:12px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -366,7 +374,7 @@ header{animation:fade .6s var(--ease) both;}
         <div class="sub">See your income clearly</div>
       </div>
     </div>
-    <div class="hdr-btns"><div class="chip"><i class="fa-solid fa-shield-halved" style="font-size:9px;margin-right:6px;"></i>Private &amp; on-device</div><button class="hdr-btn" onclick="showPrivacy()"><i class="fa-solid fa-lock"></i> Privacy</button><button class="hdr-btn danger" onclick="destroySession()"><i class="fa-solid fa-trash-can"></i> Clear</button></div>
+    <div class="hdr-btns"><div class="chip"><i class="fa-solid fa-shield-halved" style="font-size:9px;margin-right:6px;"></i>Private &amp; on-device</div><div class="viewseg"><button id="vs-simple" class="on" onclick="setViewMode('simple')">Simple</button><button id="vs-pro" onclick="setViewMode('pro')">Pro</button></div><button class="hdr-btn" onclick="showPrivacy()"><i class="fa-solid fa-lock"></i> Privacy</button><button class="hdr-btn danger" onclick="destroySession()"><i class="fa-solid fa-trash-can"></i> Clear</button></div>
   </div>
 </header>
 
@@ -738,6 +746,7 @@ function render(qi, share, sub, opts){
   const tiles = opts.breakdown ? metricsFromBreakdown(opts.breakdown) : '';
   if (tiles) html += tiles;
   // full breakdown (collapsible feel) + insight
+  html += '<div class="simple-line simple-only">In plain terms, about <b>'+fmt(qi)+'/mo</b> of your income can count toward a mortgage, based on Fannie Mae rules.</div>';
   if (opts.breakdown) html += '<div class="breakdown">'+opts.breakdown+'</div>';
   html += '<div class="insight">'+opts.insight+'</div>';
   if(opts.smart) html += insightPanel(opts.smart);
@@ -1145,7 +1154,7 @@ function showConfirm(f, img, rawtext){
   ref += '</div>';
 
   ocrModal('<div class="ocr-head ok"><i class="fa-solid fa-circle-check"></i> Income detected — please verify</div>'
-    +'<div class="ocr-note">'+freqTxt+' OCR can misread — check each value against your stub. Variable income (OT/bonus/commission) needs a <b>24-month total</b> for qualifying; this stub shows one period, so enter the 24-mo totals if you have them.</div>'
+    +'<div class="ocr-note">'+freqTxt+' '+scanDiagnostic(f)+' OCR can misread — check each value against your stub. Variable income (OT/bonus/commission) needs a <b>24-month total</b> for qualifying; this stub shows one period, so enter the 24-mo totals if you have them.</div>'
     +ref
     +rawPanel(rawtext, f)
     +'<div class="ocr-grid">'
@@ -1401,7 +1410,7 @@ function calcDTI(){
     +'<div class="dti-gauges">'+gaugeBack+gaugeFront+'</div>'
     +wifHtml
     +'<div class="rf-wrap">'+flagHtml+'</div>'
-    +'<div class="breakdown">'+bd+'</div>'
+    +'<div class="simple-line simple-only">In plain terms, about <b>'+Math.round(backDTI)+'%</b> of your monthly income would go to debts including the new housing payment. Lenders generally like this under 43%.</div>'+'<div class="breakdown">'+bd+'</div>'
     +insightPanel(dtiInsights(LAST_DTI))+'<button class="btn-ghost" onclick="exportPDF()"><i class="fa-solid fa-file-pdf"></i> Export a clean PDF summary</button>'+'<button class="btn-ghost copy-btn" onclick="copyCleanText()"><i class="fa-solid fa-copy"></i> Copy clean text</button>'+DISCLAIMER_SHORT
     +'</div>';
   document.getElementById('analysis').innerHTML=html;
@@ -1657,7 +1666,26 @@ function copyCleanText(){
   if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(function(){ iaaToast('Clean estimate copied to clipboard.'); },function(){ iaaFallbackCopy(txt); }); }
   else iaaFallbackCopy(txt);
 }
-document.querySelectorAll('.yrn').forEach(e=>e.textContent=NOW.getFullYear());document.querySelectorAll('.y1').forEach(e=>e.textContent=YR_RECENT);document.querySelectorAll('.y2').forEach(e=>e.textContent=YR_PRIOR);setVarMethod('quick'); showDisclaimerGate(); resetIdle();
+function setViewMode(m){
+  document.body.classList.remove('simple','pro'); document.body.classList.add(m);
+  const bs=document.getElementById('vs-simple'), bp=document.getElementById('vs-pro');
+  if(bs) bs.classList.toggle('on', m==='simple');
+  if(bp) bp.classList.toggle('on', m==='pro');
+  window.VIEW_MODE=m;
+}
+function scanDiagnostic(f){
+  const found=[], miss=[];
+  (f.baseAnnual!=null?found:miss).push('base pay');
+  ((f.grossCurrent!=null||f.grossYTD!=null)?found:miss).push('gross wages');
+  (f.otCurrent!=null?found:miss).push('overtime');
+  (f.commCurrent!=null?found:miss).push('commission');
+  (f.bonusCurrent!=null?found:miss).push('bonus');
+  let s='<span class="scan-diag">';
+  if(found.length) s+='\u2713 I read your <b>'+found.join('</b>, <b>')+'</b> from this stub. ';
+  if(miss.length) s+='I did not find a clear <b>'+miss.join('</b>, <b>')+'</b> figure \u2014 if your stub shows '+(miss.length>1?'them':'it')+', just add '+(miss.length>1?'them':'it')+' below.';
+  return s+'</span>';
+}
+document.querySelectorAll('.yrn').forEach(e=>e.textContent=NOW.getFullYear());document.querySelectorAll('.y1').forEach(e=>e.textContent=YR_RECENT);document.querySelectorAll('.y2').forEach(e=>e.textContent=YR_PRIOR);setVarMethod('quick'); setViewMode('simple'); showDisclaimerGate(); resetIdle();
 renderWorksheet(); switchTab('w2');
 </script>
 <script>
