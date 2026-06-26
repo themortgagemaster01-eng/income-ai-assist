@@ -380,11 +380,40 @@ header{animation:fade .6s var(--ease) both;}
           <div class="toggle-row"><div class="tl">I receive overtime, bonus, or commission</div>
             <label class="switch"><input id="w2-var-toggle" type="checkbox" onchange="onVarToggle()"/><span class="slider"></span></label></div>
           <div id="w2-var-fields" class="hidden">
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
-              <div><label>Total Commission (24-mo) ($)</label><input id="w2-comm" type="number" placeholder="$28,400"/></div>
-              <div><label>Total Bonus (24-mo) ($)</label><input id="w2-bonus" type="number" placeholder="$15,200"/></div>
+            <div style="display:flex;gap:8px;margin:2px 0 14px">
+              <button type="button" id="vm-quick" onclick="setVarMethod('quick')" style="flex:1;padding:9px 8px;border:1px solid rgba(201,168,106,.4);background:rgba(201,168,106,.18);color:#e8d6a8;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer">Quick &middot; 24-mo totals</button>
+              <button type="button" id="vm-detail" onclick="setVarMethod('detail')" style="flex:1;padding:9px 8px;border:1px solid rgba(201,168,106,.4);background:transparent;color:#cbb98a;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer">Detailed &middot; YTD + prior years</button>
             </div>
-            <label>Total Overtime (24-mo) ($)</label><input id="w2-ot" type="number" placeholder="$11,800"/>
+            <div id="w2-var-quick">
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+                <div><label>Total Commission (24-mo) ($)</label><input id="w2-comm" type="number" placeholder="$28,400"/></div>
+                <div><label>Total Bonus (24-mo) ($)</label><input id="w2-bonus" type="number" placeholder="$15,200"/></div>
+              </div>
+              <label>Total Overtime (24-mo) ($)</label><input id="w2-ot" type="number" placeholder="$11,800"/>
+            </div>
+            <div id="w2-var-detail" class="hidden">
+              <p class="subnote">Enter the <b>year-to-date</b> amount from your latest stub plus each prior year&rsquo;s W-2 total. The app annualizes YTD and computes the <b>2-year average</b>, which it uses as your qualifying figure (Selling Guide B3-3.1-02). With only YTD entered, it uses the YTD run-rate. The year-before column is optional.</p>
+              <label>YTD as of &mdash; months into <span class="yrn"></span> (e.g. 9 = through end of September)</label>
+              <input id="w2-ytd-months" type="number" min="1" max="12" placeholder="9"/>
+              <div style="margin-top:12px;display:grid;grid-template-columns:88px 1fr 1fr 1fr;gap:8px;align-items:center">
+                <span></span>
+                <span class="subnote" style="margin:0;text-align:center;font-size:11px">YTD <span class="yrn"></span></span>
+                <span class="subnote" style="margin:0;text-align:center;font-size:11px"><span class="y1"></span></span>
+                <span class="subnote" style="margin:0;text-align:center;font-size:11px"><span class="y2"></span> (opt)</span>
+                <span style="font-size:13px;color:#cbb98a">Overtime</span>
+                <input id="w2-ot-ytd" type="number" placeholder="$" style="margin:0"/>
+                <input id="w2-ot-y1" type="number" placeholder="$" style="margin:0"/>
+                <input id="w2-ot-y2" type="number" placeholder="&mdash;" style="margin:0"/>
+                <span style="font-size:13px;color:#cbb98a">Commission</span>
+                <input id="w2-comm-ytd" type="number" placeholder="$" style="margin:0"/>
+                <input id="w2-comm-y1" type="number" placeholder="$" style="margin:0"/>
+                <input id="w2-comm-y2" type="number" placeholder="&mdash;" style="margin:0"/>
+                <span style="font-size:13px;color:#cbb98a">Bonus</span>
+                <input id="w2-bonus-ytd" type="number" placeholder="$" style="margin:0"/>
+                <input id="w2-bonus-y1" type="number" placeholder="$" style="margin:0"/>
+                <input id="w2-bonus-y2" type="number" placeholder="&mdash;" style="margin:0"/>
+              </div>
+            </div>
           </div>
           <label>Retirement Contribution (401k %)</label><input id="w2-401k" type="number" placeholder="8%"/>
           <button class="btn-gold" onclick="runAnalysis(calcW2)"><i class="fa-solid fa-arrow-right-long"></i> Generate Analysis</button>
@@ -706,13 +735,24 @@ function runAnalysis(realFn){
 function calcW2(){
   const baseMo=val('w2-salary')/12;
   const hasVar=document.getElementById('w2-var-toggle').checked;
-  const otMo=hasVar?val('w2-ot')/24:0, commMo=hasVar?val('w2-comm')/24:0, bonusMo=hasVar?val('w2-bonus')/24:0;
+  const z={monthly:0,basis:'',declining:false,ytdMo:null,avgMo:null,enough:false};
+  const ot=hasVar?varMonthly('ot'):z, commv=hasVar?varMonthly('comm'):z, bonusv=hasVar?varMonthly('bonus'):z;
+  const otMo=ot.monthly, commMo=commv.monthly, bonusMo=bonusv.monthly;
   const variable=otMo+commMo+bonusMo, total=baseMo+variable, share=total>0?(variable/total)*100:0;
-  let ins='<span class="it">Actionable AI Insight:</span> '+(hasVar
-    ? 'Salary normalized to monthly (÷12); OT/bonus/commission averaged over 24 months per B3-3.1-02. Provide December year-end stubs for '+YR_PRIOR+' and '+YR_RECENT+' to document the full variable history. Declining variable income may be reduced or excluded.'
-    : 'Salary-only W-2 income, highly stable — documented with two most recent stubs and '+YR_PRIOR+'/'+YR_RECENT+' W-2s.');
-  const bd = '<div class="br"><span>Base monthly (annual ÷ 12)</span><span>'+fmt(baseMo)+'</span></div>'
-    + (hasVar?'<div class="br"><span>Overtime (24-mo avg)</span><span>'+fmt(otMo)+'</span></div><div class="br"><span>Commission (24-mo avg)</span><span>'+fmt(commMo)+'</span></div><div class="br"><span>Bonus (24-mo avg)</span><span>'+fmt(bonusMo)+'</span></div>':'')
+  const usingDetail=(window.VAR_METHOD==='detail');
+  const declard=[['Overtime',ot],['Commission',commv],['Bonus',bonusv]].filter(x=>x[1].declining).map(x=>x[0]);
+  let ins='<span class="it">Actionable AI Insight:</span> ';
+  if(!hasVar){
+    ins+='Salary-only W-2 income, highly stable \u2014 documented with two most recent stubs and '+YR_PRIOR+'/'+YR_RECENT+' W-2s.';
+  } else if(usingDetail){
+    ins+='Variable income computed from YTD plus prior-year totals; the <b>2-year average overrides</b> the YTD run-rate as your qualifying figure, per Selling Guide B3-3.1-02 (when prior-year data is present).';
+    if(declard.length) ins+=' <b>Heads-up:</b> '+declard.join(', ')+(declard.length>1?' are':' is')+' running below the prior-year pace \u2014 declining variable income may be reduced or require a lender explanation.';
+  } else {
+    ins+='OT/bonus/commission averaged over 24 months per B3-3.1-02. For a more precise figure, switch to <b>Detailed</b> and enter YTD plus '+YR_PRIOR+'/'+YR_RECENT+' totals \u2014 the app then uses the 2-year average.';
+  }
+  const lbl=(o,name)=> name+' ('+((hasVar&&usingDetail&&o.basis)?o.basis:'24-mo avg')+')';
+  const bd = '<div class="br"><span>Base monthly (annual \u00f7 12)</span><span>'+fmt(baseMo)+'</span></div>'
+    + (hasVar?'<div class="br"><span>'+lbl(ot,'Overtime')+'</span><span>'+fmt(otMo)+'</span></div><div class="br"><span>'+lbl(commv,'Commission')+'</span><span>'+fmt(commMo)+'</span></div><div class="br"><span>'+lbl(bonusv,'Bonus')+'</span><span>'+fmt(bonusMo)+'</span></div>':'')
     + '<div class="br total"><span>Total monthly qualifying</span><span>'+fmt(total)+'</span></div>';
   QUAL_MONTHLY = total; QUAL_SOURCE='W-2';
   const comp = compositionBar([
@@ -1443,6 +1483,40 @@ function switchTab(t){ currentType=t;
 }
 function onVarToggle(){ document.getElementById('w2-var-fields').classList.toggle('hidden', !document.getElementById('w2-var-toggle').checked); renderDocs(); }
 
+window.VAR_METHOD='quick';
+function setVarMethod(m){
+  const detail=(m==='detail');
+  const q=document.getElementById('w2-var-quick'), d=document.getElementById('w2-var-detail');
+  const bq=document.getElementById('vm-quick'), bd=document.getElementById('vm-detail');
+  if(q) q.classList.toggle('hidden', detail);
+  if(d) d.classList.toggle('hidden', !detail);
+  if(bq) bq.style.background = detail?'transparent':'rgba(201,168,106,.18)';
+  if(bq) bq.style.color = detail?'#cbb98a':'#e8d6a8';
+  if(bd) bd.style.background = detail?'rgba(201,168,106,.18)':'transparent';
+  if(bd) bd.style.color = detail?'#e8d6a8':'#cbb98a';
+  window.VAR_METHOD=m;
+}
+// Returns the monthly qualifying amount for a variable-income type.
+// Detailed mode: 2-year average OVERRIDES the YTD run-rate when prior-year data exists.
+function varMonthly(key){
+  if((window.VAR_METHOD||'quick')!=='detail'){
+    const t=val('w2-'+key); return {monthly:t/24, basis:'24-mo avg', ytdMo:null, avgMo:t/24, declining:false, enough:t>0};
+  }
+  let m=val('w2-ytd-months'); if(m<0)m=0; if(m>12)m=12;
+  const ytd=val('w2-'+key+'-ytd'), y1=val('w2-'+key+'-y1'), y2=val('w2-'+key+'-y2');
+  const ytdMo = m>0 ? ytd/m : 0;
+  if(y1>0 && (m>0 || ytd>0)){
+    const months=(m>0?m:0)+12+(y2>0?12:0);
+    const avgMo=(ytd + y1 + (y2>0?y2:0))/months;
+    const priorMo=y1/12;
+    const declining = ytdMo>0 && ytdMo < priorMo*0.95;
+    return {monthly:avgMo, basis:(y2>0?'2-yr avg':'1-yr + YTD avg'), ytdMo, avgMo, declining, enough:true};
+  }
+  if(ytd>0 && m>0) return {monthly:ytdMo, basis:'YTD run-rate', ytdMo, avgMo:null, declining:false, enough:true};
+  return {monthly:0, basis:'none', ytdMo:0, avgMo:0, declining:false, enough:false};
+}
+
+document.querySelectorAll('.yrn').forEach(e=>e.textContent=NOW.getFullYear());document.querySelectorAll('.y1').forEach(e=>e.textContent=YR_RECENT);document.querySelectorAll('.y2').forEach(e=>e.textContent=YR_PRIOR);setVarMethod('quick');
 renderWorksheet(); switchTab('w2');
 </script>
 <script>
