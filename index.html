@@ -328,6 +328,19 @@ header{animation:fade .6s var(--ease) both;}
   .reveal,.load-stagger > *{opacity:1 !important;}
 }
 </style>
+<style id="enh-css">
+.smart-panel{border:1px solid rgba(201,168,106,.25);border-radius:14px;background:rgba(201,168,106,.05);padding:14px 16px;margin-top:16px}
+.smart-h{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#e8d6a8;font-weight:600;margin-bottom:10px}
+.smart-row{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;margin:6px 0;background:rgba(0,0,0,.25);border-radius:9px;font-size:13px;line-height:1.5;color:#cfd6e2}
+.smart-row i{margin-top:2px;flex:none}
+.smart-foot{font-size:10.5px;color:#7a8493;margin-top:10px;line-height:1.4}
+.disc-foot{font-size:10.5px;color:#7a8493;text-align:center;line-height:1.5;margin-top:16px;border-top:1px solid rgba(255,255,255,.07);padding-top:12px}
+.ocr-raw{margin-bottom:16px;border:1px solid var(--line);border-radius:10px;background:rgba(0,0,0,.3);padding:4px 12px}
+.ocr-raw summary{cursor:pointer;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#e8d6a8;font-weight:600;padding:8px 0}
+.ocr-raw-body{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#aeb6c2;white-space:pre-wrap;max-height:160px;overflow:auto;background:rgba(0,0,0,.35);padding:8px;border-radius:7px;margin:4px 0}
+.ocr-raw-body mark{background:rgba(201,168,106,.4);color:#fff;border-radius:3px;padding:0 2px}
+.ocr-raw-note{font-size:9.5px;color:#7a8493;padding-bottom:8px}
+</style>
 </head>
 <body>
 
@@ -509,7 +522,7 @@ header{animation:fade .6s var(--ease) both;}
   </div>
 </div>
 
-<footer>Income <span style="font-family:'Fraunces',serif;font-style:italic;color:var(--gold-tx);">AI</span> Assist · © <span id="yr-now"></span> · Pre-qualification estimate aligned to Fannie Mae Form 1084 &amp; Selling Guide B3-3.1. Not a final underwriting decision.</footer>
+<footer>Income <span style="font-family:'Fraunces',serif;font-style:italic;color:var(--gold-tx);">AI</span> Assist · © <span id="yr-now"></span> · Illustrative estimate &middot; informational only &middot; not a loan approval or final lending decision.</footer>
 
 <script>
 const NOW=new Date(); const YR_RECENT=NOW.getFullYear()-1; const YR_PRIOR=YR_RECENT-1;
@@ -715,6 +728,8 @@ function render(qi, share, sub, opts){
   // full breakdown (collapsible feel) + insight
   if (opts.breakdown) html += '<div class="breakdown">'+opts.breakdown+'</div>';
   html += '<div class="insight">'+opts.insight+'</div>';
+  if(opts.smart) html += insightPanel(opts.smart);
+  html += DISCLAIMER_SHORT;
   html += '</div>';
   document.getElementById('analysis').innerHTML = html;
   playResultAnims();
@@ -761,7 +776,8 @@ function calcW2(){
     ['Commission', commMo, '#7cc4ff'],
     ['Bonus', bonusMo, '#d8a7ff']
   ], total);
-  render(total, share, '(24-month averaged value)', {insight:ins, breakdown:bd, ratioTitle:'Variable Income Share', composition:comp});
+  const smart=incomeInsights(total, share, hasVar, declard, usingDetail);
+  render(total, share, '(24-month averaged value)', {insight:ins, breakdown:bd, ratioTitle:'Variable Income Share', composition:comp, smart:smart});
   refreshDtiNote(); markStep('income');
 }
 
@@ -1118,6 +1134,7 @@ function showConfirm(f, img, rawtext){
   ocrModal('<div class="ocr-head ok"><i class="fa-solid fa-circle-check"></i> Income detected — please verify</div>'
     +'<div class="ocr-note">'+freqTxt+' OCR can misread — check each value against your stub. Variable income (OT/bonus/commission) needs a <b>24-month total</b> for qualifying; this stub shows one period, so enter the 24-mo totals if you have them.</div>'
     +ref
+    +rawPanel(rawtext, f)
     +'<div class="ocr-grid">'
       +row('regular','Annual Base / Salary ($)', null, f.baseNote||'')
       +row('ot','Overtime — 24-mo total ($)', null, (f.otCurrent!=null?('Stub shows $'+fmtPlain(f.otCurrent)+' this period. Enter 24-mo total.'):'Enter 24-mo total.'))
@@ -1372,7 +1389,7 @@ function calcDTI(){
     +wifHtml
     +'<div class="rf-wrap">'+flagHtml+'</div>'
     +'<div class="breakdown">'+bd+'</div>'
-    +'<button class="btn-ghost" onclick="exportPDF()"><i class="fa-solid fa-file-pdf"></i> Export a clean PDF summary</button>'
+    +insightPanel(dtiInsights(LAST_DTI))+'<button class="btn-ghost" onclick="exportPDF()"><i class="fa-solid fa-file-pdf"></i> Export a clean PDF summary</button>'+DISCLAIMER_SHORT
     +'</div>';
   document.getElementById('analysis').innerHTML=html;
   playResultAnims();
@@ -1464,7 +1481,7 @@ function exportPDF(){
    +'<h2>Monthly Obligations</h2><table>'+(d.pitia>0?'<tr><td>Proposed housing (PITIA)</td><td style="text-align:right">'+fmt(d.pitia)+'</td></tr>':'')+debtRows+'<tr><td><b>Total</b></td><td style="text-align:right"><b>'+fmt(d.pitia+d.monthlyDebts)+'</b></td></tr></table>'
    +'<h2>Debt-to-Income</h2><table>'+(d.frontDTI!=null?'<tr><td>Front-end (housing) DTI</td><td style="text-align:right">'+d.frontDTI.toFixed(1)+'%</td></tr>':'')+'<tr><td>Back-end (total) DTI</td><td style="text-align:right"><b>'+d.backDTI.toFixed(1)+'%</b></td></tr></table>'
    +'<h2>Decision Confidence: '+d.conf.l+' ('+d.score+'%)</h2><ul>'+flagRows+'</ul>'
-   +'<p class="muted" style="margin-top:30px;border-top:1px solid #ddd;padding-top:12px;">Pre-qualification estimate aligned to Fannie Mae Form 1084 &amp; Selling Guide B3-3.1. Not a commitment to lend or a final underwriting decision. Figures are based on user-entered data and require documentation and AUS validation.</p>'
+   +'<p class="muted" style="margin-top:30px;border-top:1px solid #ddd;padding-top:12px;">Illustrative estimate only &mdash; informational and educational, aligned to Fannie Mae Form 1084 &amp; Selling Guide B3-3.1. This is NOT financial, tax, mortgage, or lending advice, NOT a loan approval, pre-qualification, or commitment to lend, and does not guarantee any rate or outcome. Actual qualification requires full underwriting by a licensed lender. Consult a qualified mortgage professional. The developer is not a lender and is not affiliated with Fannie Mae or Freddie Mac.</p>'
    +'<div class="wm">Income AI Assist</div>'
    +'<p class="noprint" style="text-align:center;margin-top:24px;"><button onclick="window.print()" style="padding:12px 28px;font-size:15px;background:#c9a86a;border:none;border-radius:8px;cursor:pointer;">Print / Save as PDF</button></p>'
    +'</body></html>');
@@ -1516,7 +1533,70 @@ function varMonthly(key){
   return {monthly:0, basis:'none', ytdMo:0, avgMo:0, declining:false, enough:false};
 }
 
-document.querySelectorAll('.yrn').forEach(e=>e.textContent=NOW.getFullYear());document.querySelectorAll('.y1').forEach(e=>e.textContent=YR_RECENT);document.querySelectorAll('.y2').forEach(e=>e.textContent=YR_PRIOR);setVarMethod('quick');
+const DISCLAIMER_SHORT='<div class="disc-foot">Estimate only \u00b7 informational &amp; educational use \u00b7 not financial advice, not a loan approval or pre-qualification. Actual qualification requires full underwriting by a licensed lender.</div>';
+function insightPanel(items){
+  if(!items||!items.length) return '';
+  const ic={good:'fa-circle-check',warn:'fa-triangle-exclamation',bad:'fa-circle-exclamation',info:'fa-circle-info'};
+  const col={good:'#8fe9b0',warn:'#fde68a',bad:'#fca5a5',info:'#9cc2ff'};
+  return '<div class="smart-panel"><div class="smart-h"><i class="fa-solid fa-wand-magic-sparkles"></i> Smart Insights</div>'
+    + items.map(function(it){return '<div class="smart-row" style="border-left:3px solid '+(col[it.tone]||col.info)+'"><i class="fa-solid '+(ic[it.tone]||ic.info)+'" style="color:'+(col[it.tone]||col.info)+'"></i><div>'+it.msg+'</div></div>';}).join('')
+    + '<div class="smart-foot">Rule-based observations from the figures you entered \u2014 informational only, not advice or a lender decision.</div></div>';
+}
+function incomeInsights(total, share, hasVar, declard, usingDetail){
+  const items=[];
+  if(hasVar){
+    if(share>=40) items.push({tone:'warn',msg:'Variable income is <b>'+share.toFixed(0)+'%</b> of the total \u2014 lenders scrutinize high variable shares and want a solid 2-year history.'});
+    else if(share>0) items.push({tone:'good',msg:'Variable income is a modest <b>'+share.toFixed(0)+'%</b> of the total \u2014 a stable, well-balanced profile.'});
+    if(declard&&declard.length) items.push({tone:'bad',msg:'<b>'+declard.join(', ')+'</b> '+(declard.length>1?'are':'is')+' trending below the prior-year pace. Underwriters may use the lower figure or ask for a written explanation.'});
+    else if(usingDetail) items.push({tone:'good',msg:'Variable income is holding steady or rising vs. the prior year \u2014 supportive for qualifying.'});
+    if(!usingDetail) items.push({tone:'info',msg:'Tip: switch the variable section to <b>Detailed</b> to use your real YTD + prior-year figures (2-year average) instead of an estimate.'});
+  } else {
+    items.push({tone:'good',msg:'Salary-only income is the most stable profile for qualifying.'});
+  }
+  items.push({tone:'info',msg:'This is the income side only. Add monthly debts in the <b>DTI</b> tab to see your full debt-to-income picture.'});
+  return items.slice(0,5);
+}
+function dtiInsights(d){
+  const items=[]; if(!d) return items; const b=d.backDTI, f=d.frontDTI;
+  if(b!=null){
+    if(b<=43) items.push({tone:'good',msg:'Back-end DTI of <b>'+b.toFixed(1)+'%</b> is within the 43% QM benchmark \u2014 a healthy range.'});
+    else if(b<=50) items.push({tone:'warn',msg:'Back-end DTI of <b>'+b.toFixed(1)+'%</b> is above 43% but under the ~50% AUS ceiling \u2014 workable with strong compensating factors.'});
+    else items.push({tone:'bad',msg:'Back-end DTI of <b>'+b.toFixed(1)+'%</b> exceeds the ~50% ceiling most AUS findings allow \u2014 likely needs more income or less debt.'});
+  }
+  if(f!=null){
+    if(f<=36) items.push({tone:'good',msg:'Housing (front-end) DTI of <b>'+f.toFixed(1)+'%</b> is within the 36% guideline.'});
+    else items.push({tone:'warn',msg:'Housing (front-end) DTI of <b>'+f.toFixed(1)+'%</b> is above the 36% guideline \u2014 a larger share of income goes to housing.'});
+  }
+  if(b!=null && b>43 && d.income>0){ const overMo=((b-43)/100)*d.income; items.push({tone:'info',msg:'Roughly <b>'+fmt(overMo)+'/mo</b> less debt (or equivalent added qualifying income) would bring you to the 43% benchmark.'}); }
+  if(String(QUAL_SOURCE).indexOf('Self')>=0) items.push({tone:'info',msg:'Self-employed income uses a 2-year average \u2014 keep both years of returns handy for a lender.'});
+  return items.slice(0,5);
+}
+function highlightRaw(t,f){
+  if(!t) return '<span style="color:#7a8493">No raw text was captured.</span>';
+  let h=String(t).replace(/[&<>]/g,function(c){return c==='&'?'&amp;':c==='<'?'&lt;':'&gt;';});
+  const nums=[f.otCurrent,f.commCurrent,f.bonusCurrent,f.grossCurrent,f.grossYTD,f.baseRate].filter(function(v){return v!=null;});
+  const seen={};
+  nums.forEach(function(n){ n=Math.round(n); if(!n) return; [String(n), n.toLocaleString('en-US')].forEach(function(pp){ if(pp&&!seen[pp]&&h.indexOf(pp)>=0){ seen[pp]=1; h=h.split(pp).join('\u0001'+pp+'\u0002'); } }); });
+  return h.split('\u0001').join('<mark>').split('\u0002').join('</mark>');
+}
+function rawPanel(t,f){
+  return '<details class="ocr-raw"><summary><i class="fa-solid fa-eye"></i> What the on-device reader saw</summary><div class="ocr-raw-body">'+highlightRaw(t,f)+'</div><div class="ocr-raw-note">Processed 100% on your device (Tesseract). This text never leaves your phone. Highlights mark the figures the app pulled out.</div></details>';
+}
+function showDisclaimerGate(){
+  if(window.__disc) return; window.__disc=1;
+  const o=document.createElement('div'); o.id='disc-gate';
+  o.style.cssText='position:fixed;inset:0;z-index:2147483600;background:rgba(4,6,11,.92);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:22px';
+  const card=document.createElement('div');
+  card.style.cssText='max-width:440px;background:linear-gradient(165deg,rgba(20,24,34,.98),rgba(9,12,19,.99));border:1px solid rgba(201,168,106,.3);border-radius:20px;padding:26px;box-shadow:0 50px 130px -20px rgba(0,0,0,.85)';
+  card.innerHTML='<div style="font-size:18px;font-weight:600;color:#e8d6a8;margin-bottom:12px"><i class="fa-solid fa-circle-info"></i> Estimates only \u2014 please read</div>'
+    +'<div style="font-size:13px;line-height:1.6;color:#aab2c0">Income AI Assist is an <b>informational and educational</b> tool. It provides <b>estimates only</b> based on what you enter and publicly available Fannie Mae guidelines. It is <b>not</b> financial, tax, mortgage, or lending advice, is <b>not a loan approval or pre-qualification</b>, and does not guarantee any lending outcome. Actual qualification requires full underwriting by a licensed lender. Always consult a qualified mortgage professional. The developer is not a lender and is not affiliated with Fannie Mae or Freddie Mac. Everything you enter stays on your device.</div>';
+  const b=document.createElement('button');
+  b.textContent='I understand \u2014 these are estimates';
+  b.style.cssText='margin-top:18px;width:100%;padding:13px;border:none;border-radius:12px;background:linear-gradient(145deg,#cdac6c,#f0deae);color:#15110a;font-size:15px;font-weight:700;cursor:pointer';
+  b.onclick=function(){ o.remove(); };
+  card.appendChild(b); o.appendChild(card); document.body.appendChild(o);
+}
+document.querySelectorAll('.yrn').forEach(e=>e.textContent=NOW.getFullYear());document.querySelectorAll('.y1').forEach(e=>e.textContent=YR_RECENT);document.querySelectorAll('.y2').forEach(e=>e.textContent=YR_PRIOR);setVarMethod('quick'); showDisclaimerGate();
 renderWorksheet(); switchTab('w2');
 </script>
 <script>
