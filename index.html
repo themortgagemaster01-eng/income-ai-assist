@@ -456,7 +456,6 @@ body.simple #analysis .breakdown,body.simple #analysis .insight,body.simple #ana
               </div>
             </div>
           </div>
-          <label>Retirement Contribution (401k %)</label><input id="w2-401k" type="number" placeholder="8%"/>
           <button class="btn-gold" onclick="runAnalysis(calcW2)"><i class="fa-solid fa-arrow-right-long"></i> Generate Analysis</button>
         </div>
 
@@ -1654,7 +1653,7 @@ function showPrivacy(){
   c.appendChild(b); o.appendChild(c); o.addEventListener('click',function(e){ if(e.target===o) o.remove(); }); document.body.appendChild(o);
 }
 function destroySession(){
-  ['w2-salary','w2-401k','w2-comm','w2-bonus','w2-ot','w2-ytd-months','w2-ot-ytd','w2-ot-y1','w2-ot-y2','w2-comm-ytd','w2-comm-y1','w2-comm-y2','w2-bonus-ytd','w2-bonus-y1','w2-bonus-y2','se-own','se-k1-dist','dti-pitia','dti-cards','dti-auto','dti-install','dti-sl-bal','dti-sl-actual','dti-support','dti-othermtg','dti-other','ocr-regular','ocr-ot','ocr-comm','ocr-bonus'].forEach(function(id){ const e=document.getElementById(id); if(e) e.value=''; });
+  ['w2-salary','w2-comm','w2-bonus','w2-ot','w2-ytd-months','w2-ot-ytd','w2-ot-y1','w2-ot-y2','w2-comm-ytd','w2-comm-y1','w2-comm-y2','w2-bonus-ytd','w2-bonus-y1','w2-bonus-y2','se-own','se-k1-dist','dti-pitia','dti-cards','dti-auto','dti-install','dti-sl-bal','dti-sl-actual','dti-support','dti-othermtg','dti-other','ocr-regular','ocr-ot','ocr-comm','ocr-bonus'].forEach(function(id){ const e=document.getElementById(id); if(e) e.value=''; });
   const sep=document.getElementById('panel-se'); if(sep) sep.querySelectorAll('input[type=number]').forEach(function(e){ e.value=''; });
   const tg=document.getElementById('w2-var-toggle'); if(tg){ tg.checked=false; if(typeof onVarToggle==='function') onVarToggle(); }
   if(typeof setVarMethod==='function') setVarMethod('quick');
