@@ -390,6 +390,17 @@ body{font-variant-numeric:tabular-nums}
 .dh-status{grid-column:1/-1;font-size:12px;line-height:1.45;color:#aab2c0;border-top:1px solid rgba(255,255,255,.06);padding-top:9px}
 .dh-status.good{color:#8fe9b0}.dh-status.warn{color:#fde68a}.dh-status.bad{color:#fca5a5}
 @media(max-width:560px){.dh-val{font-size:22px}.dh-ring{width:50px;height:50px}.dh-ring-in{width:40px;height:40px}}
+/* ===== "Ink" elite-fintech theme (toggle via body.ink) ===== */
+body.ink{background:#0a0b0e!important}
+body.ink .pane{background:#0e1116!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+body.ink .pane-r{background:#0b0e13!important}
+body.ink .frameunit{background:rgba(255,255,255,.08)!important;border-color:rgba(255,255,255,.09)!important;box-shadow:none!important}
+body.ink .wsgroup,body.ink .breakdown,body.ink .insight,body.ink .smart-panel,body.ink .deal-health,body.ink .ann-box,body.ink .ocr-detected,body.ink .ocr-raw{background:rgba(255,255,255,.018)!important;border:1px solid rgba(255,255,255,.08)!important;box-shadow:none!important}
+body.ink .metric{background:rgba(255,255,255,.025)!important;border:1px solid rgba(255,255,255,.07)!important}
+body.ink input,body.ink select,body.ink textarea{background:#0c0f15!important;border:1px solid rgba(255,255,255,.1)!important}
+body.ink .result-hero{border-bottom-color:rgba(255,255,255,.08)!important}
+body.ink .modal-card,body.ink .ocr-box{background:#0e1116!important;box-shadow:0 30px 90px -20px rgba(0,0,0,.9)!important;border:1px solid rgba(255,255,255,.1)!important}
+body.ink .dh-ring-in{background:#0b0e13!important}
 </style>
 </head>
 <body>
@@ -404,7 +415,7 @@ body{font-variant-numeric:tabular-nums}
         <div class="sub">See your income clearly</div>
       </div>
     </div>
-    <div class="hdr-btns"><div class="chip"><i class="fa-solid fa-shield-halved" style="font-size:9px;margin-right:6px;"></i>Private &amp; on-device</div><div class="viewseg"><button id="vs-simple" class="on" onclick="setViewMode('simple')">Simple</button><button id="vs-pro" onclick="setViewMode('pro')">Pro</button></div><button class="hdr-btn" onclick="demoFill()"><i class="fa-solid fa-flask"></i> Demo</button><button class="hdr-btn" onclick="showGlossary()"><i class="fa-solid fa-book-open"></i> Terms</button><button class="hdr-btn" onclick="showWalkthrough(true)"><i class="fa-solid fa-circle-question"></i> Guide</button><button class="hdr-btn" onclick="showPrivacy()"><i class="fa-solid fa-lock"></i> Privacy</button><button class="hdr-btn danger" onclick="destroySession()"><i class="fa-solid fa-trash-can"></i> Clear</button></div>
+    <div class="hdr-btns"><div class="chip"><i class="fa-solid fa-shield-halved" style="font-size:9px;margin-right:6px;"></i>Private &amp; on-device</div><button class="hdr-btn" id="theme-btn" onclick="toggleInk()"><i class="fa-solid fa-circle-half-stroke"></i> Ink</button><div class="viewseg"><button id="vs-simple" class="on" onclick="setViewMode('simple')">Simple</button><button id="vs-pro" onclick="setViewMode('pro')">Pro</button></div><button class="hdr-btn" onclick="demoFill()"><i class="fa-solid fa-flask"></i> Demo</button><button class="hdr-btn" onclick="showGlossary()"><i class="fa-solid fa-book-open"></i> Terms</button><button class="hdr-btn" onclick="showWalkthrough(true)"><i class="fa-solid fa-circle-question"></i> Guide</button><button class="hdr-btn" onclick="showPrivacy()"><i class="fa-solid fa-lock"></i> Privacy</button><button class="hdr-btn danger" onclick="destroySession()"><i class="fa-solid fa-trash-can"></i> Clear</button></div>
   </div>
 </header>
 
@@ -1985,7 +1996,9 @@ function liveRecalc(){
   },200);
 }
 function initLive(){ const pl=document.querySelector('.pane-l'); if(pl){ pl.addEventListener('input',liveRecalc); pl.addEventListener('change',liveRecalc); } }
-document.querySelectorAll('.yrn').forEach(e=>e.textContent=NOW.getFullYear());document.querySelectorAll('.y1').forEach(e=>e.textContent=YR_RECENT);document.querySelectorAll('.y2').forEach(e=>e.textContent=YR_PRIOR);setVarMethod('quick'); setViewMode('simple'); a11yInit(); initLive(); updateDealHealth(); showWalkthrough(); resetIdle();
+function applyTheme(){ let t='ink'; try{ const v=localStorage.getItem('iaa_theme'); if(v) t=v; }catch(e){} document.body.classList.toggle('ink', t==='ink'); const b=document.getElementById('theme-btn'); if(b) b.innerHTML='<i class="fa-solid fa-circle-half-stroke"></i> '+(t==='ink'?'Ink':'Classic'); }
+function toggleInk(){ const on=!document.body.classList.contains('ink'); document.body.classList.toggle('ink',on); try{localStorage.setItem('iaa_theme', on?'ink':'classic');}catch(e){} const b=document.getElementById('theme-btn'); if(b) b.innerHTML='<i class="fa-solid fa-circle-half-stroke"></i> '+(on?'Ink':'Classic'); }
+document.querySelectorAll('.yrn').forEach(e=>e.textContent=NOW.getFullYear());document.querySelectorAll('.y1').forEach(e=>e.textContent=YR_RECENT);document.querySelectorAll('.y2').forEach(e=>e.textContent=YR_PRIOR);setVarMethod('quick'); setViewMode('simple'); a11yInit(); applyTheme(); initLive(); updateDealHealth(); showWalkthrough(); resetIdle();
 renderWorksheet(); switchTab('w2');
 </script>
 <script>
