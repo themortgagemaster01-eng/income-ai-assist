@@ -392,7 +392,7 @@ body.simple #analysis .breakdown,body.simple #analysis .insight,body.simple #ana
         <div class="sub">See your income clearly</div>
       </div>
     </div>
-    <div class="hdr-btns"><div class="chip"><i class="fa-solid fa-shield-halved" style="font-size:9px;margin-right:6px;"></i>Private &amp; on-device</div><div class="viewseg"><button id="vs-simple" class="on" onclick="setViewMode('simple')">Simple</button><button id="vs-pro" onclick="setViewMode('pro')">Pro</button></div><button class="hdr-btn" onclick="showWalkthrough(true)"><i class="fa-solid fa-circle-question"></i> Guide</button><button class="hdr-btn" onclick="showPrivacy()"><i class="fa-solid fa-lock"></i> Privacy</button><button class="hdr-btn danger" onclick="destroySession()"><i class="fa-solid fa-trash-can"></i> Clear</button></div>
+    <div class="hdr-btns"><div class="chip"><i class="fa-solid fa-shield-halved" style="font-size:9px;margin-right:6px;"></i>Private &amp; on-device</div><div class="viewseg"><button id="vs-simple" class="on" onclick="setViewMode('simple')">Simple</button><button id="vs-pro" onclick="setViewMode('pro')">Pro</button></div><button class="hdr-btn" onclick="demoFill()"><i class="fa-solid fa-flask"></i> Demo</button><button class="hdr-btn" onclick="showGlossary()"><i class="fa-solid fa-book-open"></i> Terms</button><button class="hdr-btn" onclick="showWalkthrough(true)"><i class="fa-solid fa-circle-question"></i> Guide</button><button class="hdr-btn" onclick="showPrivacy()"><i class="fa-solid fa-lock"></i> Privacy</button><button class="hdr-btn danger" onclick="destroySession()"><i class="fa-solid fa-trash-can"></i> Clear</button></div>
   </div>
 </header>
 
@@ -586,7 +586,7 @@ body.simple #analysis .breakdown,body.simple #analysis .insight,body.simple #ana
   </div>
 </div>
 
-<footer>Income <span style="font-family:'Fraunces',serif;font-style:italic;color:var(--gold-tx);">AI</span> Assist · © <span id="yr-now"></span> · Illustrative estimate &middot; informational only &middot; not a loan approval or final lending decision.</footer>
+<footer>Income <span style="font-family:'Fraunces',serif;font-style:italic;color:var(--gold-tx);">AI</span> Assist · © <span id="yr-now"></span> · Illustrative estimate &middot; informational only &middot; not a loan approval or final lending decision. &middot; Logic aligned to the Fannie Mae Selling Guide B3-3.1 (current as of 2025).</footer>
 
 <script>
 const NOW=new Date(); const YR_RECENT=NOW.getFullYear()-1; const YR_PRIOR=YR_RECENT-1;
@@ -1747,7 +1747,7 @@ function hhRowHtml(i){
     +'<select class="hh-who"><option value="Borrower">Borrower</option><option value="Co-borrower">Co-borrower</option></select>'
     +'<select class="hh-type" onchange="hhTypeChange(this)">'+opts+'</select>'
     +'<input class="hh-amt" type="number" placeholder="$ annual"/>'
-    +'<button class="hh-rm" title="Remove" onclick="removeSource(this)">&times;</button>'
+    +'<button class="hh-rm" title="Remove" aria-label="Remove income source" onclick="removeSource(this)">&times;</button>'
     +'<label class="hh-held"><input type="checkbox" class="hh-held-cb"/> This second job has been held <b>12+ months</b> with documentation</label>'
     +'</div>';
 }
@@ -1883,7 +1883,45 @@ function showWalkthrough(force){
   }
   draw();
 }
-document.querySelectorAll('.yrn').forEach(e=>e.textContent=NOW.getFullYear());document.querySelectorAll('.y1').forEach(e=>e.textContent=YR_RECENT);document.querySelectorAll('.y2').forEach(e=>e.textContent=YR_PRIOR);setVarMethod('quick'); setViewMode('simple'); showWalkthrough(); resetIdle();
+function demoFill(){
+  if(typeof switchTab==='function') switchTab('w2');
+  const setV=function(id,v){const e=document.getElementById(id); if(e){ e.value=v; }};
+  setV('w2-salary',145000);
+  const tg=document.getElementById('w2-var-toggle'); if(tg && !tg.checked){ tg.checked=true; if(typeof onVarToggle==='function') onVarToggle(); }
+  if(typeof setVarMethod==='function') setVarMethod('detail');
+  setV('w2-ytd-months',9);
+  setV('w2-ot-ytd',6800); setV('w2-ot-y1',9200); setV('w2-ot-y2',8400);
+  setV('w2-bonus-y1',6000); setV('w2-bonus-y2',6000);
+  iaaToast('Sample income loaded — tap Clear to reset.');
+  runAnalysis(calcW2);
+}
+const GLOSSARY=[
+  ['Qualifying income','The monthly income a lender counts toward your mortgage. Stable pay (salary) counts in full; variable pay (overtime, bonus, commission) is averaged, usually over 24 months.'],
+  ['DTI (debt-to-income)','Your monthly debts divided by your monthly qualifying income. Front-end is housing only; back-end includes all debts plus the new housing payment.'],
+  ['43% QM benchmark / 50% ceiling','43% back-end DTI is the Qualified Mortgage comfort line; automated underwriting can sometimes approve up to about 50% with strong compensating factors.'],
+  ['Variable income averaging','Overtime, bonus, and commission are averaged across a documented history (often 2 years) and watched for declines, which lenders may reduce or question.'],
+  ['Add-backs (Form 1084)','Self-employed cash-flow analysis adds back non-cash deductions like depreciation and depletion to net income to reflect true qualifying income.'],
+  ['PITIA','The full housing payment: Principal, Interest, property Taxes, homeowners Insurance, and Association (HOA) dues.'],
+  ['PMI','Private mortgage insurance, typically required when the down payment is under 20%. It raises the payment and lowers buying power.'],
+  ['AUS','Automated Underwriting System (Desktop Underwriter / Loan Product Advisor) — the engine that returns a preliminary finding. This tool estimates the math, not the AUS decision.']
+];
+function showGlossary(){
+  const o=document.createElement('div'); o.className='modal-scrim';
+  const c=document.createElement('div'); c.className='modal-card';
+  c.innerHTML='<h3><i class="fa-solid fa-book-open"></i> Mortgage terms, in plain English</h3>'
+    +'<p style="color:#7a8493;margin-top:-6px">Why this matters: knowing these terms helps you read your results and talk to a lender with confidence.</p>'
+    +GLOSSARY.map(function(g){return '<p style="margin-bottom:12px"><b style="color:#e8d6a8">'+g[0]+'</b><br>'+g[1]+'</p>';}).join('');
+  const b=document.createElement('button'); b.className='modal-x'; b.textContent='Got it'; b.onclick=function(){ o.remove(); };
+  c.appendChild(b); o.appendChild(c); o.addEventListener('click',function(e){ if(e.target===o) o.remove(); }); document.body.appendChild(o);
+}
+function a11yInit(){
+  document.querySelectorAll('.tabs .tab').forEach(function(t){ t.setAttribute('role','tab'); t.setAttribute('tabindex','0'); });
+  document.addEventListener('keydown',function(e){
+    if((e.key==='Enter'||e.key===' ') && e.target && e.target.classList && e.target.classList.contains('tab')){ e.preventDefault(); e.target.click(); }
+    if(e.key==='Escape'){ const m=document.querySelector('.modal-scrim'); if(m) m.remove(); }
+  });
+}
+document.querySelectorAll('.yrn').forEach(e=>e.textContent=NOW.getFullYear());document.querySelectorAll('.y1').forEach(e=>e.textContent=YR_RECENT);document.querySelectorAll('.y2').forEach(e=>e.textContent=YR_PRIOR);setVarMethod('quick'); setViewMode('simple'); a11yInit(); showWalkthrough(); resetIdle();
 renderWorksheet(); switchTab('w2');
 </script>
 <script>
