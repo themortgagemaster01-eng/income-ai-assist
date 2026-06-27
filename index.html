@@ -378,6 +378,18 @@ body.simple #analysis .breakdown,body.simple #analysis .insight,body.simple #ana
 .wk-dots span.on{background:#cdac6c}
 .wk-nav{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .wk-nav .modal-x{flex:none}
+body{font-variant-numeric:tabular-nums}
+.deal-health{border:1px solid rgba(255,255,255,.07);border-radius:14px;background:rgba(255,255,255,.02);padding:13px 15px;margin-bottom:14px;display:grid;grid-template-columns:1fr auto;gap:10px 14px;align-items:center}
+.dh-lbl{font-size:9.5px;letter-spacing:1.2px;text-transform:uppercase;color:#9099a8;font-weight:600}
+.dh-val{font-size:26px;font-weight:700;color:#e8d6a8;line-height:1.1}
+.dh-rings{display:flex;gap:12px}
+.dh-ring{width:58px;height:58px;border-radius:50%;background:conic-gradient(rgba(255,255,255,.08) 0deg,rgba(255,255,255,.08) 360deg);display:flex;align-items:center;justify-content:center;transition:background .4s ease}
+.dh-ring-in{width:46px;height:46px;border-radius:50%;background:#0e1219;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.dh-ring-pct{font-size:14px;font-weight:700;color:#cbd5e1;line-height:1}
+.dh-ring-cap{font-size:7.5px;letter-spacing:.5px;text-transform:uppercase;color:#7a8493;margin-top:2px}
+.dh-status{grid-column:1/-1;font-size:12px;line-height:1.45;color:#aab2c0;border-top:1px solid rgba(255,255,255,.06);padding-top:9px}
+.dh-status.good{color:#8fe9b0}.dh-status.warn{color:#fde68a}.dh-status.bad{color:#fca5a5}
+@media(max-width:560px){.dh-val{font-size:22px}.dh-ring{width:50px;height:50px}.dh-ring-in{width:40px;height:40px}}
 </style>
 </head>
 <body>
@@ -571,6 +583,14 @@ body.simple #analysis .breakdown,body.simple #analysis .insight,body.simple #ana
       <!-- RIGHT -->
       <div class="pane pane-r">
         <div class="kicker" style="text-align:center;">Your Income, Analyzed</div>
+        <div id="deal-health" class="deal-health">
+          <div class="dh-main"><div class="dh-lbl">Qualifying income</div><div class="dh-val" id="dh-income">&mdash;</div></div>
+          <div class="dh-rings">
+            <div class="dh-ring" id="dh-back-ring"><div class="dh-ring-in"><span class="dh-ring-pct" id="dh-back">&mdash;</span><span class="dh-ring-cap">Back DTI</span></div></div>
+            <div class="dh-ring" id="dh-front-ring"><div class="dh-ring-in"><span class="dh-ring-pct" id="dh-front">&mdash;</span><span class="dh-ring-cap">Front DTI</span></div></div>
+          </div>
+          <div class="dh-status" id="dh-status">Enter income on any tab to begin</div>
+        </div>
         <div id="analysis"><div class="placeholder"><i class="fa-solid fa-chart-pie"></i>Enter income details and generate to view your Fannie&nbsp;Mae-aligned qualifying analysis.</div></div>
       </div>
     </div>
@@ -723,6 +743,7 @@ function animatePct(el, target, dur){
   requestAnimationFrame(step);
 }
 function playResultAnims(){
+  if(window._live){ liveSetFinals(); updateDealHealth(); return; }
   // count up the big income figure
   const v = document.querySelector('#analysis .qi-value');
   if (v && v.dataset.count){ animateCount(v, parseFloat(v.dataset.count), 1100, v.dataset.neg==='1'?'-$':'$'); }
@@ -740,6 +761,7 @@ function playResultAnims(){
   // count up the confidence score
   const cf = document.querySelector('#analysis .conf-count');
   if (cf && cf.dataset.conf){ const t=parseFloat(cf.dataset.conf); animateGeneric(cf, t, 1000, v=>String(Math.round(v))); }
+  updateDealHealth();
 }
 // generic eased count-up driver
 function animateGeneric(el, target, dur, fmtFn){
@@ -827,7 +849,7 @@ function calcW2(){
     ins+='Salary-only W-2 income, highly stable \u2014 documented with two most recent stubs and '+YR_PRIOR+'/'+YR_RECENT+' W-2s.';
   } else if(usingDetail){
     ins+='Variable income computed from YTD plus prior-year totals; the <b>2-year average overrides</b> the YTD run-rate as your qualifying figure, per Selling Guide B3-3.1-02 (when prior-year data is present).';
-    if(declard.length) ins+=' <b>Heads-up:</b> '+declard.join(', ')+(declard.length>1?' are':' is')+' running below the prior-year pace \u2014 declining variable income may be reduced or require a lender explanation.';
+    if(declard.length) ins+=' <b>Heads-up:</b> '+declard.join(', ')+(declard.length>1?' are':' is')+' running below the prior-year pace. Per Selling Guide B3-3.1-02, the lower current-year run rate should be used for qualifying unless documented compensating factors support the higher average.';
   } else {
     ins+='OT/bonus/commission averaged over 24 months per B3-3.1-02. For a more precise figure, switch to <b>Detailed</b> and enter YTD plus '+YR_PRIOR+'/'+YR_RECENT+' totals \u2014 the app then uses the 2-year average.';
   }
@@ -1921,7 +1943,49 @@ function a11yInit(){
     if(e.key==='Escape'){ const m=document.querySelector('.modal-scrim'); if(m) m.remove(); }
   });
 }
-document.querySelectorAll('.yrn').forEach(e=>e.textContent=NOW.getFullYear());document.querySelectorAll('.y1').forEach(e=>e.textContent=YR_RECENT);document.querySelectorAll('.y2').forEach(e=>e.textContent=YR_PRIOR);setVarMethod('quick'); setViewMode('simple'); a11yInit(); showWalkthrough(); resetIdle();
+function updateDealHealth(){
+  const inc=(typeof QUAL_MONTHLY!=='undefined')?(QUAL_MONTHLY||0):0;
+  const ie=document.getElementById('dh-income'); if(ie) ie.textContent = inc>0? fmt(inc) : '\u2014';
+  function ring(rid,pid,pct){
+    const el=document.getElementById(rid), pe=document.getElementById(pid); if(!el||!pe) return;
+    if(pct==null||isNaN(pct)){ el.style.background='conic-gradient(rgba(255,255,255,.08) 0deg,rgba(255,255,255,.08) 360deg)'; pe.textContent='\u2014'; pe.style.color='#cbd5e1'; return; }
+    const col=pct<=43?'#8fe9b0':pct<=50?'#fde68a':'#fca5a5';
+    const deg=Math.max(0,Math.min(360,pct/60*360));
+    el.style.background='conic-gradient('+col+' '+deg+'deg,rgba(255,255,255,.08) '+deg+'deg)';
+    pe.textContent=Math.round(pct)+'%'; pe.style.color=col;
+  }
+  const d=(typeof LAST_DTI!=='undefined')?LAST_DTI:null;
+  ring('dh-back-ring','dh-back', d?d.backDTI:null);
+  ring('dh-front-ring','dh-front', (d&&d.frontDTI!=null)?d.frontDTI:null);
+  const st=document.getElementById('dh-status'); if(!st) return;
+  if(inc<=0){ st.textContent='Enter income on any tab to begin'; st.className='dh-status'; }
+  else if(!d){ st.innerHTML='Income set ('+fmt(inc)+'/mo). Add debts on the <b>DTI</b> tab to see your ratios.'; st.className='dh-status'; }
+  else { const b=d.backDTI; if(b<=43){ st.textContent='Looking strong \u2014 within the 43% comfort zone.'; st.className='dh-status good'; } else if(b<=50){ st.textContent='Getting tight \u2014 above 43%, may need strong compensating factors.'; st.className='dh-status warn'; } else { st.textContent='Over typical limits \u2014 likely needs less debt or more income.'; st.className='dh-status bad'; } }
+}
+function liveSetFinals(){
+  const v=document.querySelector('#analysis .qi-value'); if(v&&v.dataset.count) v.textContent=(v.dataset.neg==='1'?'-$':'$')+Math.round(Math.abs(parseFloat(v.dataset.count))).toLocaleString('en-US');
+  const ring=document.querySelector('#analysis .ring-prog'); if(ring) ring.style.strokeDashoffset=ring.dataset.off;
+  const pctEl=document.querySelector('#analysis .pct'); if(pctEl&&pctEl.dataset.pct) pctEl.textContent=parseFloat(pctEl.dataset.pct).toFixed(1)+'%';
+  document.querySelectorAll('#analysis .comp-seg').forEach(function(sg){ sg.style.width=(sg.dataset.w||0)+'%'; });
+  const dt=document.querySelector('#analysis .dti-count'); if(dt&&dt.dataset.dti) dt.textContent=parseFloat(dt.dataset.dti).toFixed(1)+'%';
+  const cf=document.querySelector('#analysis .conf-count'); if(cf&&cf.dataset.conf) cf.textContent=String(Math.round(parseFloat(cf.dataset.conf)));
+}
+let _liveT;
+function liveRecalc(){
+  clearTimeout(_liveT);
+  _liveT=setTimeout(function(){
+    window._live=true;
+    try{
+      if(currentType==='w2'){ if(val('w2-salary')>0) calcW2(); }
+      else if(currentType==='dti'){ if(QUAL_MONTHLY>0) calcDTI(); }
+      else if(currentType==='household'){ if([].slice.call(document.querySelectorAll('#panel-household .hh-amt')).some(function(e){return parseFloat(e.value)>0;})) calcHousehold(); }
+      else if(currentType==='maxprice'){ if(QUAL_MONTHLY>0) calcMaxPrice(); }
+    }catch(e){}
+    window._live=false; updateDealHealth();
+  },200);
+}
+function initLive(){ const pl=document.querySelector('.pane-l'); if(pl){ pl.addEventListener('input',liveRecalc); pl.addEventListener('change',liveRecalc); } }
+document.querySelectorAll('.yrn').forEach(e=>e.textContent=NOW.getFullYear());document.querySelectorAll('.y1').forEach(e=>e.textContent=YR_RECENT);document.querySelectorAll('.y2').forEach(e=>e.textContent=YR_PRIOR);setVarMethod('quick'); setViewMode('simple'); a11yInit(); initLive(); updateDealHealth(); showWalkthrough(); resetIdle();
 renderWorksheet(); switchTab('w2');
 </script>
 <script>
