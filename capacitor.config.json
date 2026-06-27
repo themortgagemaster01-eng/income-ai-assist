@@ -1,0 +1,10 @@
+{
+  "appId": "com.incomeaiassist.app",
+  "appName": "Income AI Assist",
+  "webDir": "www",
+  "backgroundColor": "#0a0d14",
+  "server": { "iosScheme": "https" },
+  "plugins": {
+    "SplashScreen": { "backgroundColor": "#0a0d14", "showSpinner": false }
+  }
+}
