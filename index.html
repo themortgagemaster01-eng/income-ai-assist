@@ -386,7 +386,8 @@ body{font-variant-numeric:tabular-nums}
 .dh-ring{width:58px;height:58px;border-radius:50%;background:conic-gradient(rgba(255,255,255,.08) 0deg,rgba(255,255,255,.08) 360deg);display:flex;align-items:center;justify-content:center;transition:background .4s ease}
 .dh-ring-in{width:46px;height:46px;border-radius:50%;background:#0e1219;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .dh-ring-pct{font-size:14px;font-weight:700;color:#cbd5e1;line-height:1}
-.dh-ring-cap{font-size:7.5px;letter-spacing:.5px;text-transform:uppercase;color:#7a8493;margin-top:2px}
+.dh-rc{display:flex;flex-direction:column;align-items:center;gap:5px}
+.dh-ring-cap{font-size:8.5px;letter-spacing:.6px;text-transform:uppercase;color:#7a8493;text-align:center;white-space:nowrap}
 .dh-status{grid-column:1/-1;font-size:12px;line-height:1.45;color:#aab2c0;border-top:1px solid rgba(255,255,255,.06);padding-top:9px}
 .dh-status.good{color:#8fe9b0}.dh-status.warn{color:#fde68a}.dh-status.bad{color:#fca5a5}
 @media(max-width:560px){.dh-val{font-size:22px}.dh-ring{width:50px;height:50px}.dh-ring-in{width:40px;height:40px}}
@@ -586,8 +587,8 @@ body{font-variant-numeric:tabular-nums}
         <div id="deal-health" class="deal-health">
           <div class="dh-main"><div class="dh-lbl">Qualifying income</div><div class="dh-val" id="dh-income">&mdash;</div></div>
           <div class="dh-rings">
-            <div class="dh-ring" id="dh-back-ring"><div class="dh-ring-in"><span class="dh-ring-pct" id="dh-back">&mdash;</span><span class="dh-ring-cap">Back DTI</span></div></div>
-            <div class="dh-ring" id="dh-front-ring"><div class="dh-ring-in"><span class="dh-ring-pct" id="dh-front">&mdash;</span><span class="dh-ring-cap">Front DTI</span></div></div>
+            <div class="dh-rc"><div class="dh-ring" id="dh-back-ring"><div class="dh-ring-in"><span class="dh-ring-pct" id="dh-back">&mdash;</span></div></div><span class="dh-ring-cap">Back DTI</span></div>
+            <div class="dh-rc"><div class="dh-ring" id="dh-front-ring"><div class="dh-ring-in"><span class="dh-ring-pct" id="dh-front">&mdash;</span></div></div><span class="dh-ring-cap">Front DTI</span></div>
           </div>
           <div class="dh-status" id="dh-status">Enter income on any tab to begin</div>
         </div>
