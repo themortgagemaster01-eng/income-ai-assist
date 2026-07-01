@@ -1986,27 +1986,6 @@ function liveRecalc(){
   },200);
 }
 function initLive(){ const pl=document.querySelector('.pane-l'); if(pl){ pl.addEventListener('input',liveRecalc); pl.addEventListener('change',liveRecalc); } }
-/* ===== Pro unlock scaffold ($14.99 one-time) — DORMANT until IAA_MONETIZE=true ===== */
-window.IAA_MONETIZE=false;            /* flip to true at iOS launch to enable gating */
-window.IAA_PRO=false; try{ if(localStorage.getItem('iaa_pro')==='1') window.IAA_PRO=true; }catch(e){}
-function isPro(){ return !window.IAA_MONETIZE || window.IAA_PRO; }
-function requirePro(cb){ if(isPro()){ cb(); } else { showPaywall(); } }
-function iaaUnlockPro(){ window.IAA_PRO=true; try{localStorage.setItem('iaa_pro','1');}catch(e){} if(typeof iaaToast==='function') iaaToast('Pro unlocked — thank you!'); }
-function showPaywall(){
-  const o=document.createElement('div'); o.className='modal-scrim';
-  const c=document.createElement('div'); c.className='modal-card';
-  c.innerHTML='<h3><i class="fa-solid fa-star"></i> Income AI Assist Pro</h3>'
-    +'<div style="font-size:30px;font-weight:800;color:#e8d6a8;margin:2px 0">$14.99 <span style="font-size:13px;font-weight:600;color:#9099a8">one-time</span></div>'
-    +'<p>Unlock the professional toolkit \u2014 one purchase, no subscription:</p>'
-    +'<p style="margin:0 0 8px"><b style="color:#e8d6a8">Premium PDF reports</b><br>Clean multi-page summaries to send clients or your processor.</p>'
-    +'<p style="margin:0 0 8px"><b style="color:#e8d6a8">Save &amp; compare scenarios</b><br>Stack what-if versions side by side.</p>'
-    +'<p style="margin:0 0 8px"><b style="color:#e8d6a8">Scan full tax returns</b><br>Pull income and add-backs from 1040 / Schedule C / K-1, on-device.</p>'
-    +'<p style="color:#7a8493;font-size:11px">One-time unlock on this device. The core calculators stay free.</p>';
-  const b=document.createElement('button'); b.className='modal-x'; b.textContent='Unlock \u2014 $14.99';
-  b.onclick=function(){ if(typeof iaaBuyPro==='function'){ iaaBuyPro(); } else { (typeof iaaToast==='function') && iaaToast('Pro unlock arrives with the iOS app.'); } o.remove(); };
-  const later=document.createElement('button'); later.className='hdr-btn'; later.style.cssText='width:100%;margin-top:8px;padding:11px'; later.textContent='Maybe later'; later.onclick=function(){ o.remove(); };
-  c.appendChild(b); c.appendChild(later); o.appendChild(c); o.addEventListener('click',function(e){ if(e.target===o) o.remove(); }); document.body.appendChild(o);
-}
 document.querySelectorAll('.yrn').forEach(e=>e.textContent=NOW.getFullYear());document.querySelectorAll('.y1').forEach(e=>e.textContent=YR_RECENT);document.querySelectorAll('.y2').forEach(e=>e.textContent=YR_PRIOR);setVarMethod('quick'); setViewMode('simple'); a11yInit(); initLive(); updateDealHealth(); showWalkthrough(); resetIdle();
 renderWorksheet(); switchTab('w2');
 </script>
